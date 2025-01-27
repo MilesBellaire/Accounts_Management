@@ -1,7 +1,10 @@
+
+import os
 import pandas as pd
 from inputs import inputs 
 from prettytable import PrettyTable
 
+folder_path = './Csvs'
 file_path = './Csvs/budgets.csv'
 units = ['$', '%lo-', '%lo+', '%ov']
 
@@ -9,6 +12,10 @@ try:
     df = pd.read_csv(file_path)
 except FileNotFoundError:
     df = pd.DataFrame(columns=['name', 'value', 'unit', 'cap', 'equation', 'tags'])
+    
+    if not os.path.exists('./Csvs'):
+        os.makedirs(folder_path)
+
     df.to_csv(file_path, index=False)
 
 def Save():
@@ -52,7 +59,7 @@ def Update():
             if column == 'unit':
                 val = inputs.get_unit(units)
             elif column == 'value':
-                val = inputs.get_value('Enter value in $ per month' if row['unit'] == '$' else 'Enter value as %')
+                val = inputs.get_value('Enter value in $ per month' if (row['unit'] == '$').any() else 'Enter value as %')
             elif column == 'cap' and row['unit'] == '%lo-':
                 val = inputs.get_cap()
             elif column == 'tags':
@@ -80,16 +87,16 @@ def View():
 
 def budgets():
 
-    choice = 0
+    choice = -1
 
-    while choice != 5:
+    while choice != 0:
         print()
         print('Budgets Menu')
         print('1. View')
         print('2. Add')
         print('3. Update')
         print('4. Remove')
-        print('5. Back')
+        print('0. Back')
         choice = int(input('Enter your choice: '))
 
         if choice == 1:

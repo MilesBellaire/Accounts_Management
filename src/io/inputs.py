@@ -4,7 +4,11 @@ import re
 class inputs:
     def __init__(self):
         pass
-
+    
+    @staticmethod
+    def _validate_initial_input(value):
+        if value == 'q': exit()
+        return value
     @staticmethod
     def get_float(prompt: str, label: str) -> float:
         value = ''
@@ -12,16 +16,52 @@ class inputs:
             try:
                 print()
                 print(prompt)
-                value = float(input(f'Enter {label}: '))
+                value = input(f'Enter {label}: ')
+                value = inputs._validate_initial_input(value)
+
+                value = float(value)
+                return value
+            except ValueError:
+                print('Invalid input. Try again.')
+
+    def get_str(prompt: str) -> str:
+        value = ''
+        while True:
+            try:
+                print()
+                print(prompt)
+                value = input('Enter value: ')
+                value = inputs._validate_initial_input(value)
+
+                value = str(value)
                 return value
             except ValueError:
                 print('Invalid input. Try again.')
     
     @staticmethod
-    def get_name() -> str:
+    def get_options(options, prompt):
         while True:
             print()
-            name = input('Enter name: ').lower().strip()
+            print(prompt)
+            print('Possible options:')
+            for i, option in enumerate(options):
+                print(f'{i}: {option}')
+            try:
+                index = input('Enter index: ')
+                index = inputs._validate_initial_input(index)
+
+                index = int(index)
+                if index < 0 or index >= len(options):
+                    print('Invalid choice. Try again.')
+                else:
+                    return options[index]
+            except ValueError:
+                print('Invalid input. Try again.')
+
+    @staticmethod
+    def get_name() -> str:
+        while True:
+            name = inputs.get_str('Enter name: ').lower().strip()
             if ' ' in name:
                 print('Name cannot contain spaces. Try again.')
             else:
@@ -35,14 +75,7 @@ class inputs:
     
     @staticmethod
     def get_unit(possible_units: list) -> str:
-        unit = ''
-        while True:
-            print()
-            print(f'Possible units: {possible_units}')
-            unit = input('Enter unit: ')
-            if unit in possible_units:
-                break
-            print('Invalid unit. Try again.')
+        unit = inputs.get_options(possible_units, 'Enter unit')
         return unit
     
     @staticmethod
@@ -66,7 +99,7 @@ class inputs:
 
         
         print()
-        tags = input('Enter tags: ')
+        tags = inputs.get_str('Enter tags: ')
         return tags
 
     @staticmethod
@@ -103,6 +136,7 @@ class inputs:
                 break
         return equation
     
+    @staticmethod
     def get_yon(prompt):
         yon = ''
         while yon != 'y' and yon != 'n':
@@ -113,22 +147,19 @@ class inputs:
                 print('Invalid input. Try again.')
         return yon
     
+    @staticmethod
     def get_dollars_per_hour():
-        while True:
-            try:
-                print()
-                print('Enter value in $ per hour')
-                value = float(input('Enter value: '))
-                return value
-            except ValueError:
-                print('Invalid input. Try again.')
+        return inputs.get_float('Enter value in $ per hour', 'value')
     
+    @staticmethod
     def get_hours():
+        return inputs.get_float('Enter value in hours', 'value')
+    
+    @staticmethod
+    def get_date(prompt):
         while True:
-            try:
-                print()
-                print('Enter value in hours')
-                value = float(input('Enter value: '))
-                return value
-            except ValueError:
-                print('Invalid input. Try again.')
+            date = inputs.get_str(prompt)
+            if len(date) == 8 and date[2] == '/' and date[5] == '/':
+                break
+            print('Invalid date format. Try again.')
+        return date

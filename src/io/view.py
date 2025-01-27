@@ -1,13 +1,44 @@
+import sys
+sys.path.append('./')
+
+import os
 import re
 import pandas as pd
 from prettytable import PrettyTable
+import logic.shared_logic as shared_logic
+from database.dbio import sql
 
-incomes = pd.read_csv('./Csvs/incomes.csv')
-budgets = pd.read_csv('./Csvs/budgets.csv')
-constants = pd.read_csv('./Csvs/constants.csv')
+# Initialize csvs and dataframes
+folder_path = './Csvs'
+incomes_path = './Csvs/incomes.csv'
+budgets_path = './Csvs/budgets.csv'
+constants_path = './Csvs/constants.csv'
+
+if not os.path.exists('./Csvs'):
+    os.makedirs(folder_path)
+
+try:
+    incomes = pd.read_csv('./Csvs/incomes.csv')
+except FileNotFoundError:
+    incomes = pd.DataFrame(columns=['name', '$perhour', 'hours'])
+    incomes.to_csv('./Csvs/incomes.csv', index=False)
+
+try:
+    budgets = pd.read_csv('./Csvs/budgets.csv')
+except FileNotFoundError:
+    budgets = pd.DataFrame(columns=['name', 'value', 'unit', 'cap', 'equation', 'tags'])
+    budgets.to_csv('./Csvs/budgets.csv', index=False)
+
+try:
+    constants = pd.read_csv('./Csvs/constants.csv')
+except FileNotFoundError:
+    constants = pd.DataFrame(columns=['name', 'value'])
+    constants.to_csv('./Csvs/constants.csv', index=False)
 
 def Evaluate_equation(equation: str, base: float)-> float:
     if equation == 'nan': return base
+
+    constants = sql.get_constants()
     split_equation = re.split(r'[\[\]]', equation.replace(' ', ''))
     filled_equation = ''
 
@@ -29,14 +60,21 @@ def get_dollars_per(per_month):
         '${:,.2f}'.format(per_month*12),
         '${:,.2f}'.format(per_month*60),
     ]
-    
+
 def generate_accounts_df():
+    incomes = sql.get_income()
+    budgets = sql.get_budget()
+
+    # print(incomes)
+
     columns = ['Name', 'Percentage', 'Per Month', 'Category']
 
-    income_per_month = sum(incomes['$perhour'])*sum(incomes['hours'])*4.345
+    income_per_month = sum(incomes[incomes['unit'] == '$']['value'])
+    income_per_month += sum([Evaluate_equation(str(income['equation']), income['value']) for i, income in incomes[incomes['unit'] == 'eq'].iterrows()])
 
     expenses_per_month = (sum(budgets[budgets['unit'] == '%ov']['value']/100*income_per_month)
-        + sum([Evaluate_equation(str(budget[5]), budget[1]) for budget in budgets[budgets['unit'] == '$'].values]))
+        + sum([Evaluate_equation(str(budget['equation']), budget['value']) for i, budget in budgets[budgets['unit'] == 'eq'].iterrows()])
+        + sum(budgets[budgets['unit'] == '$']['value']))
     
     leftover = income_per_month-expenses_per_month
 
@@ -45,56 +83,73 @@ def generate_accounts_df():
 
     # Incomes
     accounts = [[
-        income[0], 
-        income[1]*income[2]*4.345/income_per_month, 
-        income[1]*income[2]*4.345, 
+        income['name'], 
+        income['value']/income_per_month, 
+        income['value'], 
         'income'
-    ] for income in incomes.values]
+    ] for i, income in incomes[incomes['unit'] == '$'].iterrows()]
+
+    for i, income in incomes[incomes['unit'] == 'eq'].iterrows():
+        expense = Evaluate_equation(str(income['equation']), income['value'])
+        accounts.append([
+            income['name'],
+            expense/income_per_month,
+            expense,
+            'income'
+        ])
 
     # Over Percentages
     accounts += [[
-        budget[0],
-        budget[1]/100,
-        budget[1]/100*income_per_month,
-        budget[4]
-    ] for budget in budgets[budgets['unit'] == '%ov'].values]
+        budget['name'],
+        budget['value']/100,
+        budget['value']/100*income_per_month,
+        budget['tags']
+    ] for i, budget in budgets[budgets['unit'] == '%ov'].iterrows()]
+    
+    accounts += [[
+        budget['name'], 
+        budget['value']/income_per_month, 
+        budget['value'], 
+        budget['tags']
+    ] for i, budget in budgets[budgets['unit'] == '$'].iterrows()]
     
     # Flat Expenses
-    for budget in budgets[budgets['unit'] == '$'].values:
-        expense = Evaluate_equation(str(budget[5]), budget[1])
+    for i, budget in budgets[budgets['unit'] == 'eq'].iterrows():
+        expense = Evaluate_equation(budget['equation'], budget['value'])
         accounts.append([
-            budget[0],
+            budget['name'],
             expense/income_per_month,
             expense,
-            budget[4]
+            budget['tags']
         ])
     
     # Leftover percentages with caps
-    for budget in budgets[budgets['unit'] == '%lo-'].values:
-        expense = max(min(budget[1]/100*leftover, budget[3]), 0)
+    for i, budget in budgets[budgets['unit'] == '%lo-'].iterrows():
+        expense = max(min(budget['value']/100*leftover, budget['cap']), 0)
         percentage = expense/income_per_month
 
         accounts.append([
-            budget[0],
+            budget['name'],
             percentage,
             expense,
-            budget[4]
+            budget['tags']
         ])
         
-        percent_cut_by_cap += max((budget[1]/100-expense/leftover), 0)
+        percent_cut_by_cap += max((budget['value']/100-expense/leftover), 0)
 
     # Leftover percentages that take over other's caps
-    for budget in budgets[budgets['unit'] == '%lo+'].values:
+    for i, budget in budgets[budgets['unit'] == '%lo+'].iterrows():
         additional_percentage = percent_cut_by_cap/len(budgets[budgets['unit'] == '%lo+'])
-        leftover_percentage = budget[1]/100 + additional_percentage
+        leftover_percentage = budget['value']/100 + additional_percentage
         percentage = leftover_percentage*leftover/income_per_month
         expense = percentage*income_per_month
 
+
         accounts.append([
-            budget[0],
+            budget['name'],
             percentage,
             expense,
-            budget[4]
+            budget['tags']
         ])
 
     # Leftovers
@@ -108,8 +163,8 @@ def generate_accounts_df():
     
     return pd.DataFrame(accounts, columns=columns)
 
-def overall_percentages():
-    df = generate_accounts_df()
+def timeline():
+    df = shared_logic.generate_accounts_df()
     
     table = PrettyTable()
     table.align = 'r'
@@ -118,18 +173,74 @@ def overall_percentages():
     table.field_names = [name + ' '*((column_size-len(name))//2) for name in table.field_names]
 
     for cat in df['Category'].unique():
+        df_cat = df[df['Category'] == cat]
+
         table.add_rows([
             ['']*len(table.field_names),
-            [f'{str(cat).capitalize()}' + ' '*((column_size-len(cat))//2)]*len(table.field_names),
-            ['-'*column_size]*len(table.field_names)
+            [f'{str(cat).capitalize()}' + ' '*((column_size-len(str(cat)))//2)]*len(table.field_names),
+            ['-'*column_size]*len(table.field_names),
         ])
         table.add_rows([[row[0], f'{row[1]:.2%}'] + get_dollars_per(row[2]) for row in df[df['Category'] == cat].values])
+        table.add_rows([['total', f'{sum(df_cat['Percentage']):.2%}'] + get_dollars_per(sum(df_cat['Per Month']))])
     print(table)
 
     income_percentage_sum = round(df[df['Category'] == 'income']['Percentage'].sum())
     expenses_percentage_sum = round(df[df['Category'] != 'income']['Percentage'].sum())
     income_sum = round(df[df['Category'] == 'income']['Per Month'].sum())
     expenses_sum = round(df[df['Category'] != 'income']['Per Month'].sum())
+
+    if income_percentage_sum != 1:
+        print('Warning: Income percentages do not add up to 1.0')
+        print(f'Sum: {income_percentage_sum}')
+
+    if expenses_percentage_sum != 1:
+        print('Warning: Expenses percentages do not add up to 1.0')
+        print(f'Sum: {expenses_percentage_sum}')
+
+    if income_sum != expenses_sum:
+        print('Warning: expenses percentages do not add up to income percentages')
+        print(f'Sum of expenses: {income_sum}')
+        print(f'Sum of income: {expenses_sum}')
+
+
+def income_percentages():
+    df = shared_logic.generate_accounts_df()
+
+    budgets = sql.get_budget()
+
+    for i, row in df.iterrows():
+        if row['Name'] in budgets['name'].values:
+            df.loc[i, 'Account'] = budgets[budgets['name'] == row['Name']]['account'].values[0]
+        else:
+            df.loc[i, 'Account'] = 'income'
+    df.loc[df['Name'] == 'Leftover', 'Account'] = 'savings'
+
+    table = PrettyTable()
+    table.align = 'r'
+    column_size = 16
+    table.field_names = ['Name', 'Overall Percentage', 'Overall Per Month'] + [c.replace('_', ' ').capitalize() for c in df.columns[4:-1].tolist()]
+    table.field_names = [name + ' '*((column_size-len(name))//2) for name in table.field_names]
+
+    cats = df[['Account', 'Percentage']].groupby('Account').sum().sort_values('Percentage', ascending=False)
+    for cat in cats.index:
+        df_cat = df[df['Account'] == cat]
+
+        # print(df_cat.iloc)
+        table.add_rows([
+            # ['']*len(table.field_names),
+            ['-'*column_size]*len(table.field_names),
+            [f'{str(cat).capitalize()}' + ' '*((column_size-len(str(cat)))//2)]*len(table.field_names),
+            ['']*len(table.field_names),
+            # ['-'*column_size]*len(table.field_names)
+        ])
+        table.add_rows([[row[0], f'{row[1]:.2%}', f"${row[2]:.2f}"] + [f'{row[i+4]:.2%}' if i%2 == 0 else f'${row[i+4]:.2f}' for i in range(len(df.columns)-5)] for row in df_cat.values])
+        table.add_rows([['total', f'{sum(df_cat['Percentage']):.2%}', f'${sum(df_cat['Per Month']):.2f}'] + [f'{sum(df_cat.iloc[:, i+4]):.2%}' if i%2 == 0 else f'${sum(df_cat.iloc[:, i+4]):.2f}' for i in range(len(df.columns)-5)]])
+    print(table)
+
+    income_percentage_sum = round(df[df['Account'] == 'income']['Percentage'].sum())
+    expenses_percentage_sum = round(df[df['Account'] != 'income']['Percentage'].sum())
+    income_sum = round(df[df['Account'] == 'income']['Per Month'].sum())
+    expenses_sum = round(df[df['Account'] != 'income']['Per Month'].sum())
 
     if income_percentage_sum != 1:
         print('Warning: Income percentages do not add up to 1.0')
@@ -190,13 +301,13 @@ def Display():
     expenses_per_month = []
     for budget in budgets[budgets['unit'] == '%ov'].values:
         expenses_per_month.append(budget[1]/100*income_per_month)
-        budget_table.add_row([budget[0], str(round(budget[1], 1))+budget[2][0], budget[2]] + get_dollars_per(expenses_per_month[-1]) + [budget[4]])
+        budget_table.add_row([budget[0], str(round(budget[1], 1))+budget[2][0], budget[2]] + get_dollars_per(expenses_per_month[-1]) + [budget[5]])
 
     budget_table.add_row(empty_row)
 
     for budget in budgets[budgets['unit'] == '$'].values:
-        expenses_per_month.append(Evaluate_equation(str(budget[5]), budget[1]))
-        budget_table.add_row([budget[0], budget[2][0]+str(round(budget[1], 2)), budget[2]] + get_dollars_per(expenses_per_month[-1]) + [budget[4]])
+        expenses_per_month.append(Evaluate_equation(str(budget[4]), budget[1]))
+        budget_table.add_row([budget[0], budget[2][0]+str(round(budget[1], 2)), budget[2]] + get_dollars_per(expenses_per_month[-1]) + [budget[5]])
 
     budget_table.add_row(empty_row)
 
@@ -209,7 +320,7 @@ def Display():
         percentage = expense/(leftover)*100
         percent_cut_by_cap += max((budget[1]-percentage)/100, 0)
         leftover_percentage -= percentage/100
-        budget_table.add_row([budget[0], str(round(percentage,2))+budget[2][0], budget[2]] + get_dollars_per(expense) + [budget[4]])
+        budget_table.add_row([budget[0], str(round(percentage,2))+budget[2][0], budget[2]] + get_dollars_per(expense) + [budget[5]])
     
     budget_table.add_row(empty_row)
 
@@ -218,12 +329,12 @@ def Display():
         percentage = budget[1]/100 + additional_percentage
         leftover_percentage -= percentage
         expense = max(min(percentage*(leftover), budget[3]), 0)
-        budget_table.add_row([budget[0], str(round(percentage*100, 2))+budget[2][0], budget[2]] + get_dollars_per(expense) + [budget[4]])
+        budget_table.add_row([budget[0], str(round(percentage*100, 2))+budget[2][0], budget[2]] + get_dollars_per(expense) + [budget[5]])
 
     budget_table.add_row(empty_row)
 
     expense = max(leftover_percentage*(leftover), 0)
-    budget_table.add_row(['Leftover', str(round(leftover_percentage*100, 2))+'%', '%lo++'] + get_dollars_per(expense) + [budget[4]])
+    budget_table.add_row(['Leftover', str(round(leftover_percentage*100, 2))+'%', '%lo++'] + get_dollars_per(expense) + [budget[5]])
 
     print(income_table)
     print()
@@ -234,19 +345,22 @@ def Display():
 
 def view():
 
-    choice = 0
+    choice = -1
 
-    while choice != 3:
+    while choice != 4:
         print()
         print('1. Display')
-        print('2. Overall Percentages')
-        print('3. Back')
+        print('2. Timeline')
+        print('3. Income Percentages')
+        print('4. Back')
         choice = int(input('Enter your choice: '))
 
         if choice == 1:
             Display()
         elif choice == 2:
-            overall_percentages()
+            timeline()
+        elif choice == 3:
+            income_percentages()
 
 
 view()

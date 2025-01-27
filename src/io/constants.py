@@ -1,13 +1,20 @@
+
+import os
 import pandas as pd
 from prettytable import PrettyTable
 from inputs import inputs
 
+folder_path = './Csvs'
 file_path = './Csvs/constants.csv'
 
 try:
     df = pd.read_csv(file_path)
 except FileNotFoundError:
     df = pd.DataFrame(columns=['name', 'value'])
+    
+    if not os.path.exists('./Csvs'):
+        os.makedirs(folder_path)
+        
     df.to_csv(file_path, index=False)
 
 def Save():
@@ -28,8 +35,7 @@ def Update():
     global df
 
     name = inputs.get_name()
-    row = df[df['name'] == name]
-    row['value'] = inputs.get_value('Enter value as constant')
+    df.loc[df['name'] == name,'value'] = inputs.get_value('Enter value as constant')
     Save()
 
 def Remove():
@@ -49,16 +55,16 @@ def View():
 
 def constants():
 
-    choice = 0
+    choice = -1
 
-    while choice != 5:
+    while choice != 0:
         print()
         print('Constants Menu')
         print('1. View')
         print('2. Add')
         print('3. Update')
         print('4. Remove')
-        print('5. Back')
+        print('0. Back')
         choice = int(input('Enter your choice: '))
 
         if choice == 1:
