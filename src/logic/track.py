@@ -5,6 +5,7 @@ import pandas as pd
 from inputs import inputs
 from database.dbio import sql
 from logic.parsers import parse
+from logic.shared_logic import generate_accounts_df
 
 def track(file_name):
    transactions = parse(file_name)
@@ -75,7 +76,7 @@ def track(file_name):
          credits.loc[i, 'AssociatedId'] = keyword_matches['id'].iloc[0]
       # If no keywords match
       else:
-         categories = incomes.loc[incomes['tracking_type'] == 'keyword', ['id','name']]
+         categories = incomes.loc[(incomes['tracking_type'] == 'keyword') | (incomes['tracking_type'] == 'withdrawal'), ['id','name']]
          categories = pd.concat([categories, pd.DataFrame({'name': ['Unknown'], 'id': [-1]})], ignore_index=True)
 
          cat_input = inputs.get_options(list(categories['name']), f"Choose Category for the following Transaction:\n\tDesc: {row['Description']}\n\tAmount: {row['DebitOrCredit']}{row['Amount']}")
@@ -99,5 +100,49 @@ def track(file_name):
 
    sql.stage_transactions(transactions)
 
-   sql.close()
+   # sql.close()
 
+def run_report():
+   staged_income = sql.get_staged_transactions_by_income()
+   report = sql.get_balance_update_report()
+   budget_distribution = generate_accounts_df(False)
+   budget_distribution = budget_distribution[budget_distribution['Category'] != 'income']
+
+   print(staged_income)
+   # print(report)
+
+   cols = ['Name']+[i for i in budget_distribution.columns.tolist() if '%' in i]
+
+   budget_distribution = budget_distribution[cols]
+
+   # print(sum(budget_distribution['salary %']))
+
+   budget_distribution.rename(columns={'Name':'name'}, inplace=True)
+   total_credits = []
+
+   # print(pd.merge(report, budget_distribution, how='outer', on='name'))
+   for i, row in pd.merge(report, budget_distribution, how='outer', on='name').iterrows():
+      credit = 0
+      if row['name'] == 'Leftover': continue
+
+      if row['name'] == 'undecided': 
+         credit = 0
+      else:
+         for col in cols:
+            col = col
+            if col[:-2] not in staged_income['name'].tolist(): continue
+            credit += row[col] * staged_income[staged_income['name'] == col[:-2]].iloc[0]['credit']
+
+      total_credits += [credit]
+
+
+
+   report['total_credits'] = total_credits
+   report.loc[report['name'] == 'undecided','total_credits'] = sum(staged_income['credit']) - sum(total_credits)
+
+   report['new_balance'] = report['initial_balance'] + report['total_credits'] - report['total_debits']
+   print(report)
+   print(report.groupby('account').sum()[['initial_balance', 'total_debits', 'total_credits', 'new_balance']])
+
+   print('total balance:', sum(report['new_balance']))
+   # exit()

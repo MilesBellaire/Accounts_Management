@@ -9,31 +9,31 @@ import logic.shared_logic as shared_logic
 from database.dbio import sql
 
 # Initialize csvs and dataframes
-folder_path = './Csvs'
-incomes_path = './Csvs/incomes.csv'
-budgets_path = './Csvs/budgets.csv'
-constants_path = './Csvs/constants.csv'
+# folder_path = './Csvs'
+# incomes_path = './data/incomes.csv'
+# budgets_path = './data/budgets.csv'
+# constants_path = './data/constants.csv'
 
-if not os.path.exists('./Csvs'):
-    os.makedirs(folder_path)
+# if not os.path.exists('./Csvs'):
+#     os.makedirs(folder_path)
 
-try:
-    incomes = pd.read_csv('./Csvs/incomes.csv')
-except FileNotFoundError:
-    incomes = pd.DataFrame(columns=['name', '$perhour', 'hours'])
-    incomes.to_csv('./Csvs/incomes.csv', index=False)
+# try:
+#     incomes = pd.read_csv('./data/incomes.csv')
+# except FileNotFoundError:
+#     incomes = pd.DataFrame(columns=['name', '$perhour', 'hours'])
+#     incomes.to_csv('./data/incomes.csv', index=False)
 
-try:
-    budgets = pd.read_csv('./Csvs/budgets.csv')
-except FileNotFoundError:
-    budgets = pd.DataFrame(columns=['name', 'value', 'unit', 'cap', 'equation', 'tags'])
-    budgets.to_csv('./Csvs/budgets.csv', index=False)
+# try:
+#     budgets = pd.read_csv('./data/budgets.csv')
+# except FileNotFoundError:
+#     budgets = pd.DataFrame(columns=['name', 'value', 'unit', 'cap', 'equation', 'tags'])
+#     budgets.to_csv('./data/budgets.csv', index=False)
 
-try:
-    constants = pd.read_csv('./Csvs/constants.csv')
-except FileNotFoundError:
-    constants = pd.DataFrame(columns=['name', 'value'])
-    constants.to_csv('./Csvs/constants.csv', index=False)
+# try:
+#     constants = pd.read_csv('./data/constants.csv')
+# except FileNotFoundError:
+#     constants = pd.DataFrame(columns=['name', 'value'])
+#     constants.to_csv('./data/constants.csv', index=False)
 
 def Evaluate_equation(equation: str, base: float)-> float:
     if equation == 'nan': return base

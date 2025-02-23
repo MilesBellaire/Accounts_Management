@@ -7,7 +7,7 @@ from prettytable import PrettyTable
 from inputs import inputs
 
 folder_path = './Csvs'
-file_path = './Csvs/incomes.csv'
+file_path = './data/incomes.csv'
 
 try:
     df = pd.read_csv(file_path)

@@ -104,7 +104,7 @@ class inputs:
 
     @staticmethod
     def get_equation() -> str:
-        constants = pd.read_csv('./Csvs/constants.csv')['name'].tolist()
+        constants = pd.read_csv('./data/constants.csv')['name'].tolist()
 
         while True:
             print()

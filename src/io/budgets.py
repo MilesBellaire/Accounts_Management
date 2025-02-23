@@ -5,7 +5,7 @@ from inputs import inputs
 from prettytable import PrettyTable
 
 folder_path = './Csvs'
-file_path = './Csvs/budgets.csv'
+file_path = './data/budgets.csv'
 units = ['$', '%lo-', '%lo+', '%ov']
 
 try:

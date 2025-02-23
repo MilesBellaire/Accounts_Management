@@ -4,7 +4,7 @@ sys.path.append('./')
 from database.dbio import sql
 import re
 import pandas as pd
-from pulp import LpProblem, LpVariable, LpMinimize, lpSum, PULP_CBC_CMD
+from pulp import LpProblem, LpVariable, LpMinimize, LpMaximize, lpSum, PULP_CBC_CMD
 
 def Evaluate_equation(equation: str, base: float)-> float:
     if equation == 'nan': return base
@@ -32,10 +32,14 @@ def get_dollars_per(per_month):
         '${:,.2f}'.format(per_month*60),
     ]
 
-def generate_accounts_df():
+def generate_accounts_df(include_tax=True):
     incomes = sql.get_income()
     budgets = sql.get_budget()
 
+    # Drop other
+    incomes = incomes[incomes['name'] != 'other']
+    if not include_tax:
+        budgets = budgets[budgets['name'] != 'taxes']
     # print(incomes)
 
     columns = ['Name', 'Percentage', 'Per Month', 'Category']
@@ -132,7 +136,7 @@ def generate_accounts_df():
         'savings'
     ])
     
-    return determine_budget_allocations(pd.DataFrame(accounts, columns=columns))
+    return determine_budget_allocations(pd.DataFrame(accounts, columns=columns), include_tax)
 
 
 def solve_lp(l1, l2, l3):
@@ -164,9 +168,12 @@ def solve_lp(l1, l2, l3):
     return solution
 
 
-def determine_budget_allocations(df: pd.DataFrame):
+def determine_budget_allocations(df: pd.DataFrame, include_tax=True):
 
     income = sql.get_income()
+    income = income[income['name'] != 'other']
+
+    print(df)
 
     df['Percentage'] = df['Percentage']*1000
 
@@ -183,6 +190,7 @@ def determine_budget_allocations(df: pd.DataFrame):
     l3 = []
     for i, row in income.iterrows():
         for b in row['budgets'].split(', '):
+            if b == '' or not include_tax and b == 'taxes': continue
             l3 += [(l1_name.index(row['name']), l2_name.index(b))]
         l3 += [(l1_name.index(row['name']), l2_name.index('Leftover'))]
 

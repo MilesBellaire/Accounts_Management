@@ -20,7 +20,7 @@ class sql:
 				i.equation,
 				i.tags,
 				t.name as tracking_type,
-				GROUP_CONCAT(b.name, ', ') as budgets,
+				ifnull(GROUP_CONCAT(b.name, ', '), '') as budgets,
 				i.id
 			from income i
 			join tracking_type t on i.tracking_type_id = t.id
@@ -192,3 +192,81 @@ class sql:
 	def get_statement_id(filename):
 		sql_query = "select id from statement where name = ?;"
 		return sql._cursor.execute(sql_query,(filename,)).fetchone()[0]
+	
+	def validate_staged_transactions(asof_date):
+		sql_query = f"""
+			select *
+			from transact
+			where date < (
+				select ifnull(min(date), datetime('now')) from transact
+				where (
+					is_transfer = 1 and transfer_id is null
+				) or (
+					is_transfer = 0 and -1 in (budget_id, income_id)
+				)
+			);
+		"""
+		return pd.read_sql_query(sql_query, sql._conn)
+	
+	def get_balance_update_report():
+		sql_query = f"""			
+			with final as (
+				select *
+				from transact
+				where date < (
+					select ifnull(min(date), datetime('now')) as date from transact
+					where (
+						is_transfer = 1 and transfer_id is null
+					) or (
+						is_transfer = 0 and -1 in (budget_id, income_id)
+					)
+				)
+				order by date
+			),
+			g as (
+				select b.account_id, b.id, b.name, sum(amount) as total, min(date) as start_date, max(date) as end_date
+				from budget as b
+				left join final as f
+				on f.budget_id = b.id
+				group by b.name
+			),
+			most_recent_balance as (
+				select bal.*
+				from balance as bal
+				left join budget as b
+				on bal.budget_id = b.id
+				where bal.asof_date = (
+					select max(asof_date)
+					from balance as bal
+					left join budget as b
+					on bal.budget_id = b.id
+				)
+			)
+			select a.name as account, ifnull(g.name,'undecided') as name, bal.amount as initial_balance, ifnull(g.total,0.0) as total_debits -- new balance and total_credits added in python
+			from most_recent_balance as bal
+			left join g
+			on bal.budget_id = g.id
+			left join account as a
+			on g.account_id = a.id
+			order by g.name;
+		"""
+		return pd.read_sql_query(sql_query, sql._conn)
+	
+	def get_staged_transactions_by_income():
+		sql_query = f"""
+			select i.id, i.name, sum(amount) as credit
+			from transact t
+			join income i on t.income_id = i.id
+			where is_transfer = 0
+				and balance_id = 0
+				and  date < (
+					select ifnull(min(date), datetime('now')) from transact
+					where (
+						is_transfer = 1 and transfer_id is null
+					) or (
+						is_transfer = 0 and -1 in (budget_id, income_id)
+					)
+				)
+			group by i.id, i.name;
+		"""
+		return pd.read_sql_query(sql_query, sql._conn)

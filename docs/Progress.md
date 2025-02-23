@@ -67,3 +67,13 @@ break shopping into
 - sporting equipment
 - Entertainment
 - Self care
+
+
+When I come back I need to initialize balances create balance report function
+
+
+Need to update tax to only take from certain things(Salary, interest)
+
+Need to make leftover account so I can say that only certain things can go into it
+
+Need to make a new account and parser for jonhancock

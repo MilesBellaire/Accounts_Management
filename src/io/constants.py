@@ -5,7 +5,7 @@ from prettytable import PrettyTable
 from inputs import inputs
 
 folder_path = './Csvs'
-file_path = './Csvs/constants.csv'
+file_path = './data/constants.csv'
 
 try:
     df = pd.read_csv(file_path)

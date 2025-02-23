@@ -1,7 +1,7 @@
 import sys
 sys.path.append('./')
 
-from logic.track import track
+from logic.track import track, run_report
 from inputs import inputs
 
 def track_choices():
@@ -12,6 +12,7 @@ def track_choices():
         print()
         print('Incomes Menu')
         print('1. track statement')
+        print('2. Run Report')
         print('0. Back')
         choice = int(input('Enter your choice: '))
 
@@ -19,5 +20,7 @@ def track_choices():
             file_name = ''
             if file_name == '': file_name = inputs.get_str("Enter the file name: ")
             track(file_name)
+        elif choice == 2:
+            run_report()
 
 track_choices()

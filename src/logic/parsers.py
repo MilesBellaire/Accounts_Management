@@ -15,8 +15,9 @@ def parse(filename):
 
       for page in reader.pages:
          text += page.extract_text().lower()
+   # print(filename, text)
 
-   if 'Credit Card' in text:
+   if 'credit card' in text:
       return creditcard_statement(filename, text)
    else:
       return personal_statement(filename, text)
@@ -61,7 +62,7 @@ def personal_statement(filename:str, text:str):
       if "checking" in s: checking = True
       elif "saving" in s: checking = False
 
-      acc_search = re.search(r"- *(\d{9})", s)
+      acc_search = re.search(r"- *(\d{9,})", s)
       if bool(acc_search):
          account = acc_search.group(1)[-4:]
          # print(account)
@@ -79,18 +80,19 @@ def personal_statement(filename:str, text:str):
          transactions.loc[len(transactions)] = [str(g) for g in re_out.groups()] + ['c' if checking else 's', account, '', '', False]
 
    # Check if description contains "mobile pmt" or "withdrawl" or "deposit"
-   regex = rf"(?:withdrawl|deposit).*xxxxx(?:{'|'.join(list(transactions['Account']))})|mobile pmt"
+   regex = rf"(?:withdrawal|deposit).*xxxxx(?:{'|'.join(list(transactions['Account'].unique()))})|mobile pmt"
+   print(regex)
    transactions['IsTransfer'] = transactions['Description'].str.contains(regex, na=False, regex=True).map({False: 0, True: 1})
    # Accounts for start year being different that end year
    full_transact_date = [row['Date'] + ' ' + (start_date[-4:] if row['Date'][:4] == start_date[:4] else end_date[-4:])for _, row in transactions.iterrows()]
    # print(full_transact_date)
    transactions['Date'] = pd.to_datetime(full_transact_date, format="%b %d %Y")
    transactions['StatementId'] = statement_id
+   transactions['Amount'] = transactions['Amount'].str.replace(',', '').astype(float)
 
    return transactions
 
 def creditcard_statement(filename:str, text:str):
-
    # count = 0
    possible_months = r'(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)'
    dates_through = re.search(rf"({possible_months} *\d\d?), *(20\d\d) *- *({possible_months} *\d\d?), *(20\d\d)", text)
@@ -133,12 +135,12 @@ def creditcard_statement(filename:str, text:str):
          # print(account)
          continue
 
-      if (
-         i < len(text_split)-1 
-         and not bool(re.search(r" *[-+] *\$[\d,\.]+ *\$[\d,\.]+$", s))
-         and not bool(re.search(r"^\w\w\w *\d\d?", text_split[i+1]))
-      ):
-         s += " " + text_split[i+1]
+      # if (
+      #    i < len(text_split)-1 
+      #    and not bool(re.search(r" *[-+] *\$[\d,\.]+ *\$[\d,\.]+$", s))
+      #    and not bool(re.search(r"^\w\w\w *\d\d?", text_split[i+1]))
+      # ):
+      #    s += " " + text_split[i+1]
 
       re_out = re.search(r"^(\w\w\w *\d\d?) *(\w\w\w *\d\d?) *(.+?) *(-)? *\$([\d,\.]+) *", s)
       if bool(re_out):
@@ -158,6 +160,7 @@ def creditcard_statement(filename:str, text:str):
    transactions['Date'] = pd.to_datetime(full_transact_date, format="%b %d %Y")
    transactions['StatementId'] = statement_id
    transactions = transactions.drop(columns=['PostDate'])
-
+   # print(transactions)
+   # exit()
    return transactions
 
