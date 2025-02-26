@@ -15,15 +15,15 @@ def main():
         choice = int(input('Enter your choice: '))
 
         if choice == 1:
-            subprocess.run(['python3', './io/view.py'])
+            subprocess.run(['python', './io/view.py'])
         elif choice == 2:
-            subprocess.run(['python3', './io/incomes.py'])
+            subprocess.run(['python', './io/incomes.py'])
         elif choice == 3:
-            subprocess.run(['python3', './io/budgets.py'])
+            subprocess.run(['python', './io/budgets.py'])
         elif choice == 4:
-            subprocess.run(['python3', './io/constants.py'])
+            subprocess.run(['python', './io/constants.py'])
         elif choice == 5:
-            subprocess.run(['python3', './io/track.py'])
+            subprocess.run(['python', './io/track.py'])
 
 
 main()

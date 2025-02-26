@@ -25,8 +25,9 @@ class sql:
 			from income i
 			join tracking_type t on i.tracking_type_id = t.id
 			join unit u on i.unit_id = u.id
-			left join income_budget ib on i.id = ib.income_id 
-			left join budget b on ib.budget_id = b.id
+			left join distribution d on i.primary_distribution_id = d.id
+			left join distribution_budget db on d.id = db.distribution_id
+			left join budget b on db.budget_id = b.id
 			group by i.id, i.name, i.value, u.abv, i.equation, i.tags, t.name
 		"""
 		df = pd.read_sql_query(sql_query, sql._conn)
@@ -115,15 +116,22 @@ class sql:
 
 		# update transfer_id
 		sql_update_query = """
-			UPDATE transact AS t1
-			SET transfer_id = t2.id
-			FROM transact AS t2
-			WHERE t1.amount = t2.amount
-				AND t1.is_transfer = t2.is_transfer
-				AND t1.date = t2.date
+			UPDATE transact as t1
+			SET transfer_id = (
+				SELECT t2.id
+				FROM transact AS t2
+				WHERE t1.amount = t2.amount
+				AND t2.is_transfer = 1
+				AND (
+					strftime('%Y', t1.date) = strftime('%Y', t2.date) and
+					strftime('%m', t1.date) = strftime('%m', t2.date) and 
+					abs(strftime('%d', t1.date) - strftime('%d', t2.date)) <= 1
+				)
 				AND t1.debit_or_credit <> t2.debit_or_credit
-				and t1.transfer_id is null
-				and t2.transfer_id is null;
+				AND t2.transfer_id IS NULL or t2.transfer_id = t1.id
+				limit 1
+			)
+			WHERE transfer_id IS NULL and is_transfer = 1;
 		"""
 
 		for row in transactions.itertuples(index=False):
@@ -138,10 +146,9 @@ class sql:
 						class,
 						{'budget_id' if row.DebitOrCredit == '-' else 'income_id'},
 						is_transfer,
-						statement_id,
-						balance_id
+						statement_id
 					)
-				select ?,datetime('now'),?,?,?,?,?,?,?,?,0;
+				select ?,datetime('now'),?,?,?,?,?,?,?,?;
 			"""
 			sql._cursor.execute(sql_insert_query, [
 				row.Date,
@@ -208,65 +215,29 @@ class sql:
 		"""
 		return pd.read_sql_query(sql_query, sql._conn)
 	
-	def get_balance_update_report():
-		sql_query = f"""			
-			with final as (
-				select *
-				from transact
-				where date < (
-					select ifnull(min(date), datetime('now')) as date from transact
-					where (
-						is_transfer = 1 and transfer_id is null
-					) or (
-						is_transfer = 0 and -1 in (budget_id, income_id)
-					)
-				)
-				order by date
-			),
-			g as (
-				select b.account_id, b.id, b.name, sum(amount) as total, min(date) as start_date, max(date) as end_date
-				from budget as b
-				left join final as f
-				on f.budget_id = b.id
-				group by b.name
-			),
-			most_recent_balance as (
-				select bal.*
-				from balance as bal
-				left join budget as b
-				on bal.budget_id = b.id
-				where bal.asof_date = (
-					select max(asof_date)
-					from balance as bal
-					left join budget as b
-					on bal.budget_id = b.id
-				)
-			)
-			select a.name as account, ifnull(g.name,'undecided') as name, bal.amount as initial_balance, ifnull(g.total,0.0) as total_debits -- new balance and total_credits added in python
-			from most_recent_balance as bal
-			left join g
-			on bal.budget_id = g.id
-			left join account as a
-			on g.account_id = a.id
-			order by g.name;
-		"""
-		return pd.read_sql_query(sql_query, sql._conn)
-	
 	def get_staged_transactions_by_income():
 		sql_query = f"""
 			select i.id, i.name, sum(amount) as credit
 			from transact t
 			join income i on t.income_id = i.id
 			where is_transfer = 0
-				and balance_id = 0
-				and  date < (
-					select ifnull(min(date), datetime('now')) from transact
-					where (
-						is_transfer = 1 and transfer_id is null
-					) or (
-						is_transfer = 0 and -1 in (budget_id, income_id)
-					)
-				)
 			group by i.id, i.name;
+		"""
+		return pd.read_sql_query(sql_query, sql._conn)
+		
+	def update_distribution_weight(income_id, budget_id, weight):
+		sql_query = f"""
+			update distribution_budget
+			set weight = ? 
+			where distribution_id = (select primary_distribution_id from income where id = ?) 
+				and budget_id = ?;
+		"""
+		sql._cursor.execute(sql_query,(weight,income_id,budget_id))
+
+		sql.commit()
+	
+	def get_budget_balance():
+		sql_query = f"""
+			select * from budget_balance;
 		"""
 		return pd.read_sql_query(sql_query, sql._conn)

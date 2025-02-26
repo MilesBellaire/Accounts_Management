@@ -77,3 +77,75 @@ Need to update tax to only take from certain things(Salary, interest)
 Need to make leftover account so I can say that only certain things can go into it
 
 Need to make a new account and parser for jonhancock
+
+
+how do I want to handle updating a past balance?
+- delete everything after the update and recreate a new balance at the asof date?
+   - Would be difficult to update any transfers between budgets
+      - I guess I still need to implement that so I can just keep that in mind
+
+How do I want transfers to work?
+- need to have a balance
+- select the budget and amount you want to move
+- select where it's going
+- track when it happened
+- create a new balance on the same date + 1 second?
+- when updating a past transaction
+
+I think I need to get rid of the balances table, it's making things too complicated
+There's no way i'm going to have enough transactions to start slowing things down
+
+How would transfers work if there are no balances?
+- we could keep the balance table but only have 1 entery per budget
+
+Ok so we keep the balance table but instead of making sure that everything is accurate and in order, we just create a new balance whenever we say, "create new balance record",
+don't keep track of when it is accurate up to, just keep track of the insert_date.
+This way we keep change history for the balances, in case we want to go back, while not needing to backtrack and update everything if there was an issue with a past transaction.
+
+With this change we can get rid of the date restrictions on having all records verified
+
+so now the process looks like this
+- insert statement
+- parse
+- verify categories
+- create balance
+- If we want to update a statement
+   - verify that we want to replace the old one
+   - delete old transactions
+   - parse
+   - verify categories
+   - create balance using the same statement id
+
+what do I need to do?
+1. add statement_id to balance
+2. update track statement logic
+3. update Run Report logic
+   - update asof with insert_date
+4. get rid of asof_date on balance
+
+what is the purpose of the balance table?
+- keeps a record of the budgets after a given statement as a history
+- I think we should actually keep the values from the old statement and mark them in some way unless it was the most recent entry
+- They are to track where the income is currently being stored
+- A balance for a given statement should always add up to the total at that given time
+
+transfer table
+- id
+- from_balance_id
+- to_balance_id
+
+
+I think a better option would be to have a second transact table but only for budget transactions, then you can just calculate the 
+
+When I get back I need to update the report logic to update the sql table distribution budget entries
+- to do that, will need to figure out how to map the percentage map back to sql, once that is done it should be pretty simple to multiply each of the transactions by the primary distribution
+- 
+
+When I get back I need to implement transfers
+
+Next steps, 
+- I need to implement a way to add a transfer through User IO
+- way to view budgets over a period of time
+- rework lp model, get rid of leftovers, try to maximize relative percentages based on overall income
+   - Want to be able to apply incomes specified for a specific budget better
+   - because right now they're sending alot into leftovers when overflow should be disappearing(this might be a specific problem though and need to deal with it later)

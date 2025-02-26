@@ -26,3 +26,16 @@ have a csv file that holds keywords for these types of categories
 
 # Constants
 - Could turn this into variables and could come up with a script that would read some information off the internet to update them for things like gas prices.
+
+# How to initialize tables
+- Create budgets
+- Create incomes
+- Create junction table between budgets and incomes
+- Create transactions to initialize bank accounts
+- Create balances for each budget and set all amounts to 0
+    - ex:
+    
+|  date | insert_date | description | debit_or_credit | amount | class | budget_id|  income_id|  is_transfer | transfer_id | statement_id | balance_id|  account_id| 
+| - | - | - | - | - | - | - | - | - | - | - | - | - |
+| 1990-01-21 00:00:00 | 2025-02-20 03:23:52 | initialize account | + | 115.35 | test | NULL | 4 | 0 | NULL | -1 | 0 | 1| 
+    - note: income type 4 = other, which assign doesn't assign it to any budgets

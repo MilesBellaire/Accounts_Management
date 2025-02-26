@@ -42,7 +42,7 @@ def generate_accounts_df(include_tax=True):
         budgets = budgets[budgets['name'] != 'taxes']
     # print(incomes)
 
-    columns = ['Name', 'Percentage', 'Per Month', 'Category']
+    columns = ['Name', 'Percentage', 'Per Month', 'Category', 'id']
 
     income_per_month = sum(incomes[incomes['unit'] == '$']['value'])
     income_per_month += sum([Evaluate_equation(str(income['equation']), income['value']) for i, income in incomes[incomes['unit'] == 'eq'].iterrows()])
@@ -61,7 +61,8 @@ def generate_accounts_df(include_tax=True):
         income['name'], 
         income['value']/income_per_month, 
         income['value'], 
-        'income'
+        'income',
+        income['id']
     ] for i, income in incomes[incomes['unit'] == '$'].iterrows()]
 
     for i, income in incomes[incomes['unit'] == 'eq'].iterrows():
@@ -70,7 +71,8 @@ def generate_accounts_df(include_tax=True):
             income['name'],
             expense/income_per_month,
             expense,
-            'income'
+            'income',
+            income['id']
         ])
 
     # Over Percentages
@@ -78,14 +80,16 @@ def generate_accounts_df(include_tax=True):
         budget['name'],
         budget['value']/100,
         budget['value']/100*income_per_month,
-        budget['tags']
+        budget['tags'],
+        budget['id']        
     ] for i, budget in budgets[budgets['unit'] == '%ov'].iterrows()]
     
     accounts += [[
-        budget['name'], 
+        budget['name'],
         budget['value']/income_per_month, 
         budget['value'], 
-        budget['tags']
+        budget['tags'],
+        budget['id']
     ] for i, budget in budgets[budgets['unit'] == '$'].iterrows()]
     
     # Flat Expenses
@@ -95,7 +99,8 @@ def generate_accounts_df(include_tax=True):
             budget['name'],
             expense/income_per_month,
             expense,
-            budget['tags']
+            budget['tags'],
+            budget['id']
         ])
     
     # Leftover percentages with caps
@@ -107,7 +112,8 @@ def generate_accounts_df(include_tax=True):
             budget['name'],
             percentage,
             expense,
-            budget['tags']
+            budget['tags'],
+            budget['id']
         ])
         
         percent_cut_by_cap += max((budget['value']/100-expense/leftover), 0)
@@ -124,7 +130,8 @@ def generate_accounts_df(include_tax=True):
             budget['name'],
             percentage,
             expense,
-            budget['tags']
+            budget['tags'],
+            budget['id']
         ])
 
     # Leftovers
@@ -141,7 +148,7 @@ def generate_accounts_df(include_tax=True):
 
 def solve_lp(l1, l2, l3):
     # Initialize the problem
-    problem = LpProblem("MultiDimensional_Variable", LpMinimize)
+    problem = LpProblem("MultiDimensional_Variable", LpMaximize)
 
     x = {(i, j): LpVariable(f"x{i}{j}", lowBound=0) for i in range(len(l1)) for j in range(len(l2))}
 
@@ -167,13 +174,18 @@ def solve_lp(l1, l2, l3):
     solution = {var.name: var.varValue for var in problem.variables()}
     return solution
 
-
+# With this refact I want to leave out the leftover
 def determine_budget_allocations(df: pd.DataFrame, include_tax=True):
 
     income = sql.get_income()
     income = income[income['name'] != 'other']
 
-    print(df)
+    if not include_tax and 'taxes' in df['Name'].tolist():
+        df = df[df['Name'] != 'taxes']
+
+    # df = df[df['Name'] != 'Leftover']
+
+    # print(df)
 
     df['Percentage'] = df['Percentage']*1000
 
@@ -190,9 +202,11 @@ def determine_budget_allocations(df: pd.DataFrame, include_tax=True):
     l3 = []
     for i, row in income.iterrows():
         for b in row['budgets'].split(', '):
-            if b == '' or not include_tax and b == 'taxes': continue
+            if b == '' or (not include_tax and b == 'taxes'): continue
             l3 += [(l1_name.index(row['name']), l2_name.index(b))]
         l3 += [(l1_name.index(row['name']), l2_name.index('Leftover'))]
+
+    # print(l3)
 
     solution = solve_lp(l1, l2, l3)
 

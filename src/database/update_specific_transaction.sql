@@ -1,55 +1,88 @@
--- update transact
--- set is_transfer = 0,
---    income_id = 4
--- where id in (508,510, 512);
+
 
 -- update transact
--- set transfer_id = 511
--- where id = 464;
+-- set income_id = 1
+-- where id = 494;
 
--- update transact
--- set transfer_id = 464
--- where id = 511;
+-- create table distribution(
+--    id integer primary key AUTOINCREMENT,
+--    name text,
+--    income_id int,
+--    foreign key (income_id) references income(id) 
+-- );
 
--- update transact
--- set transfer_id = 406
--- where id = 464;
+-- create table distribution_budget(
+--    id integer primary key AUTOINCREMENT,
+--    weight real,
+--    distribution_id int,
+--    budget_id int,
+--    foreign key (distribution_id) REFERENCES distribution(id),
+--    foreign key (budget_id) references budget(id)
+-- );
 
--- update transact
--- set transfer_id = 488,
---    budget_id = ''
--- where id = 480;
+-- alter table income
+-- add primary_distribution_id int;
 
--- update transact
--- set transfer_id = 480
--- where id = 488;
+-- insert into distribution(name, income_id)
+-- select distinct 'primary', income_id
+-- from income_budget;
 
--- update transact 
--- set amount = amount - 0.35
--- where id = 497;
+-- insert into distribution_budget(weight, distribution_id, budget_id)
+-- select 0.0, d.id, budget_id
+-- from income_budget ib
+-- join distribution d on ib.income_id = d.income_id;
 
-select *
-from transact
-where (
-   is_transfer = 1 and transfer_id is null
-) or (
-   is_transfer = 0 and -1 in (budget_id, income_id)
-);
+-- update income as i
+-- set primary_distribution_id = (
+--    select d.id
+--    from distribution d
+--    where income_id = i.id
+-- );
 
-select a.id, name, sum(case when debit_or_credit = '-' then -amount else amount end) as balance
-from transact t
-left join account a on t.account_id = a.id
-group by name;
+-- select *
+-- from transact
+-- where (
+--    is_transfer = 1 and transfer_id is null
+-- ) or (
+--    is_transfer = 0 and -1 in (budget_id, income_id)
+-- );
 
-select sum(amount)
-from transact
-where account_id = 6 and debit_or_credit = '-';
+-- select a.id, name, sum(case when debit_or_credit = '-' then -amount else amount end) as balance
+-- from transact t
+-- left join account a on t.account_id = a.id
+-- group by name;
 
-select sum(amount)
-from transact
-where account_id = 6 and debit_or_credit = '+';
+-- select budget.id, budget.name, sum(amount), count(*)
+-- from transact
+-- left join budget on budget.id = budget_id
+-- where debit_or_credit = '-' AND is_transfer = 0
+-- group by budget.name, budget.id;
 
-select sum(case when debit_or_credit = '-' then -amount else amount end) as balance
-from transact;
+-- select income.id, income.name, sum(amount), count(*)
+-- from transact
+-- left join income on income.id = income_id
+-- where debit_or_credit = '+' AND is_transfer = 0
+-- group by income.name, income.id;
 
-select * from transact;
+-- select sum(amount) as total_debit
+-- from transact
+-- where debit_or_credit = '-' and is_transfer = 0;
+
+-- select sum(amount) as total_credit
+-- from transact
+-- where debit_or_credit = '+' and is_transfer = 0;
+
+-- select sum(case when debit_or_credit = '-' then -amount else amount end) as balance
+-- from transact;
+
+-- select * from transact
+-- left join budget on budget.id = budget_id
+-- where budget.id is null and debit_or_credit = '-' and is_transfer = 0;
+
+-- select * from balance;
+
+-- select * from account;
+
+-- select * from transact
+-- where income_id = 4;
+

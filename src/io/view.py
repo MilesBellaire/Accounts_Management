@@ -205,6 +205,7 @@ def timeline():
 
 def income_percentages():
     df = shared_logic.generate_accounts_df()
+    df = df.drop(['id'], axis=1)
 
     budgets = sql.get_budget()
 
