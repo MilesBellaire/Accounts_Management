@@ -4,6 +4,11 @@ select * from statement;
 -- start_date: '2024-12-01 00:00:00'
 -- end_date: datetime('now')
 
+delete from budget_balance_transfer;
+
+-- insert into budget_balance_transfer(amount, from_budget_id, to_budget_id, date)
+-- values (10000.00, 0, 2, '2024-12-01 00:00:00');
+
 
 select * from transact
 where date >= '2024-12-01 00:00:00' and date < '2024-12-31 00:00:00'

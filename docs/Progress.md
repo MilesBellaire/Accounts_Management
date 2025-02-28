@@ -149,3 +149,26 @@ Next steps,
 - rework lp model, get rid of leftovers, try to maximize relative percentages based on overall income
    - Want to be able to apply incomes specified for a specific budget better
    - because right now they're sending alot into leftovers when overflow should be disappearing(this might be a specific problem though and need to deal with it later)
+
+
+What do I want from this from UI
+- I want to see and edit my transactions
+   - I want searching filters
+- I want to see my total income and spendings
+- I want to see my budgets
+   - Likely will need to be over a certain amount of time
+- I want to be able to make a transfer between budgets
+- I want to be able to view my budgets over time
+   - Coud just do this by exporting to an excel doc
+- I want to be able to add, delete, edit...
+   - budgets
+   - incomes
+   - equations
+   - etc.
+- I want a place to upload my statements
+- I want it to be functional
+
+What are the things I want to be able to access easily?
+- Transactions
+- Budgets
+- Overall spendings and incomes
