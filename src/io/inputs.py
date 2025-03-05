@@ -1,4 +1,5 @@
 import pandas as pd
+from database.dbio import sql
 import re
 
 class inputs:
@@ -29,8 +30,7 @@ class inputs:
         while True:
             try:
                 print()
-                print(prompt)
-                value = input('Enter value: ')
+                value = input(prompt)
                 value = inputs._validate_initial_input(value)
 
                 value = str(value)
@@ -59,11 +59,13 @@ class inputs:
                 print('Invalid input. Try again.')
 
     @staticmethod
-    def get_name() -> str:
+    def get_name(existing_names=[]) -> str:
         while True:
             name = inputs.get_str('Enter name: ').lower().strip()
             if ' ' in name:
-                print('Name cannot contain spaces. Try again.')
+                print('Name cannot contain spaces.')
+            elif name in existing_names:
+                print('Name already exists.')
             else:
                 break
         return name
@@ -104,7 +106,7 @@ class inputs:
 
     @staticmethod
     def get_equation() -> str:
-        constants = pd.read_csv('./data/constants.csv')['name'].tolist()
+        constants = sql.get_constants()['name'].tolist()
 
         while True:
             print()
@@ -155,11 +157,54 @@ class inputs:
     def get_hours():
         return inputs.get_float('Enter value in hours', 'value')
     
+    # Not sure this works
     @staticmethod
     def get_date(prompt):
         while True:
             date = inputs.get_str(prompt)
-            if len(date) == 8 and date[2] == '/' and date[5] == '/':
+            if len(date) == 8 and date[2] == '-' and date[5] == '-':
                 break
             print('Invalid date format. Try again.')
         return date
+    
+    @staticmethod
+    def get_month(prompt):
+        while True:
+            date = inputs.get_str(prompt)
+            # validate that date is a valid date and is in the form of YYYY-MM
+            try:
+                pd.to_datetime(date, format='%Y-%m')
+            except ValueError:
+                print('Invalid date format. Try again.')
+                continue
+            break
+        return date
+
+    @staticmethod
+    def multi_select(options: list, prompt: str, num_required=0) -> list:
+        selected = []
+        while True:
+            print()
+            print(prompt)
+            print('Select options:')
+            for i, option in enumerate(options):
+                print(f'{'-' if i in selected else ' '} {i}: {option}')
+            try:
+                index = input('Enter index: ')
+                index = inputs._validate_initial_input(index)
+
+                if not index and num_required >= len(selected) and inputs.get_yon('Confirm?') == 'y':
+                    break
+                elif not index and num_required < len(selected):
+                    print(f'{num_required} options required.')
+                    continue
+                index = int(index)
+                if index < 0 or index >= len(options):
+                    print('Invalid choice. Try again.')
+                elif index in selected:
+                    selected.remove(index)
+                else:
+                    selected.append(index)
+            except ValueError:
+                print('Invalid input. Try again.')
+        return [options[i] for i in selected]

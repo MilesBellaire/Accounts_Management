@@ -172,3 +172,22 @@ What are the things I want to be able to access easily?
 - Transactions
 - Budgets
 - Overall spendings and incomes
+
+
+Right now there is no asof date.  If there's a change in the ideal budgets then it'll retroactively change all the balances.  Options for fixing this
+- I could add the balance table back and it'll bring back the same problem
+- I could attach a distribution to each transaction itself
+   - If I did that I would need a method of saving old weights
+      - I already have this but the issue is figuring out when I need to recalculate the distributions
+         - I would recalculate whenever I run the report and update the primary but when I confirm the distribution it makes a copy of it so it saves for later
+   - Need to...
+      - add distribution to transact
+      - Script the cloning and adding to transact
+      - Update run report script to add initial balance again
+         - How am I see if a debit maybe I don't need an initial balance
+         - Maybe this process should just happen when inserting a statement
+            - Would need to go back and add this to that
+            - When editing the type of income, how would I update this automatically?
+            - Maybe I could add a trigger for when income is updated it will clone the associated distribution
+- I could also just make a second transact table that is specifically for distributing payments 
+   - So the transact table would connect to a distribution then all the transactions in the transact2 table would link to it aswell

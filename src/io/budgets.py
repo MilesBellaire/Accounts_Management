@@ -1,84 +1,128 @@
+import sys
+sys.path.append('./')
 
-import os
+from database.dbio import sql
 import pandas as pd
 from inputs import inputs 
 from prettytable import PrettyTable
 
-folder_path = './Csvs'
-file_path = './data/budgets.csv'
-units = ['$', '%lo-', '%lo+', '%ov']
+units = sql.get_units().astype({'id': int})
+unit_opts = units['abv'].tolist()
 
-try:
-    df = pd.read_csv(file_path)
-except FileNotFoundError:
-    df = pd.DataFrame(columns=['name', 'value', 'unit', 'cap', 'equation', 'tags'])
-    
-    if not os.path.exists('./Csvs'):
-        os.makedirs(folder_path)
+# Import tracking types and set id to int
+tracking_types = sql.get_tracking_types().astype({'id': int})
+tracking_type_opts = tracking_types['name'].tolist()
 
-    df.to_csv(file_path, index=False)
+accounts = sql.get_accounts().astype({'id': int})
+account_opts = accounts['name'].tolist()
 
-def Save():
-    df.to_csv(file_path, index=False)
+incomes = sql.get_income()
+income_opts = incomes['name'].tolist()
 
 def Add():
-    global df
-    name = inputs.get_name()
-    unit = inputs.get_unit(units)
+    budgets = sql.get_budget()
+
+
+    name = inputs.get_name(budgets['name'].tolist())
+    unit = inputs.get_unit(unit_opts)
     value = inputs.get_value('Enter value in $ per month' if unit == '$' else 'Enter value as %')
 
     if unit == '%lo-': cap = inputs.get_cap()
     else: cap = None
 
-    if unit == '$' and inputs.get_yon('Do you want to enter an equation?') == 'y': equation = inputs.get_equation()
+    if unit == 'eq' and inputs.get_yon('Do you want to enter an equation?') == 'y': 
+        equation = inputs.get_equation()
     else: equation = None
 
+    tracking_type = inputs.get_options(tracking_type_opts, 'Enter tracking type')
+    account = inputs.get_options(account_opts, 'Enter account')
     tags = inputs.get_tags()
 
-    df = pd.concat([df, pd.DataFrame({'name': name, 'value': value, 'unit': unit, 'cap': cap, 'equation': equation, 'tags': tags}, index=[0])], ignore_index=True)
-    Save()
+    attached_incomes = inputs.multi_select(income_opts, 'Enter incomes that will contribute to this budget')
+
+    new_id = sql.insert_budget(
+        name, 
+        equation, 
+        tags, 
+        tracking_types[tracking_types['name'] == tracking_type].iloc[0]['id'], 
+        units[units['abv'] == unit].iloc[0]['id'], 
+        value, 
+        cap,
+        accounts[accounts['name'] == account].iloc[0]['id']
+    )
+
+    for income in attached_incomes:
+        sql.insert_distribution_budget(
+            incomes[incomes['name'] == income].iloc[0]['id'],
+            new_id
+        )
 
 def Update():
-    global df
+    # turn nans in to none
+    budgets = sql.get_budget().fillna('')
+    budget_opts = budgets['name'].tolist()
 
-    while True:
-        name = inputs.get_name()
-        if name == 'end': return
+    budget = inputs.get_options(budget_opts, 'Enter budget to update')
 
-        row = df[df['name'] == name]
-        if row.empty:
-            print(F'{name} not found.')
-            continue
-        break
-    while True:
-        column = input('Enter column to update (value, unit, cap, tags): ')
-        if column == 'end': return
+    row = budgets[budgets['name'] == budget].iloc[0]
+    
+    column = inputs.get_options([
+        'name',
+        'unit',
+        'value',
+        'tags',
+        'tracking_type',
+        'account',
+    ] + (['equation'] if row['unit'] == 'eq' else [])
+    + (['cap'] if row['unit'] == '%lo-' else [])
+    , 'Enter column to update')
 
-        if df.columns.str.contains(column).any():
-            val = ''
-            if column == 'unit':
-                val = inputs.get_unit(units)
-            elif column == 'value':
-                val = inputs.get_value('Enter value in $ per month' if (row['unit'] == '$').any() else 'Enter value as %')
-            elif column == 'cap' and row['unit'] == '%lo-':
-                val = inputs.get_cap()
-            elif column == 'tags':
-                val = inputs.get_tags()
-            elif column == 'equation' and row['unit'] == '$':
-                val = inputs.get_equation()
-            df.loc[df['name'] == name, column] = val
-            break
-        print(f'{column} not found.')
+    val = ''
+    if column == 'name':
+        val = inputs.get_name(budget_opts)
+    elif column == 'unit':
+        val = inputs.get_unit(unit_opts)
+        if val == 'eq': row['equation'] = inputs.get_equation()
+    elif column == 'value':
+        val = inputs.get_value('Enter value in $ per month' if (row['unit'] == '$') else 'Enter value as %')
+    elif column == 'cap' and row['unit'] == '%lo-':
+        val = inputs.get_cap()
+    elif column == 'tags':
+        val = inputs.get_tags()
+    elif column == 'equation' and row['unit'] == 'eq':
+        val = inputs.get_equation()
+    elif column == 'tracking_type':
+        val = inputs.get_options(tracking_type_opts, 'Enter tracking type')
+    elif column == 'account':
+        val = inputs.get_options(account_opts, 'Enter account')
+    row[column] = val
 
-    Save()
+    sql.update_budget(
+        row['id'], 
+        row['name'], 
+        row['equation'], 
+        row['tags'], 
+        tracking_types[tracking_types['name'] == row['tracking_type']].iloc[0]['id'], 
+        units[units['abv'] == row['unit']].iloc[0]['id'], 
+        row['value'], 
+        row['cap'], 
+        accounts[accounts['name'] == row['account']].iloc[0]['id']
+    )
+
 
 def Remove():
-    global df
-    name = input('Enter name: ')
-    df = df[df['name'] != name]
-    Save()
+    budgets = sql.get_budget()
+    budget_opts = budgets['name'].tolist()
+
+    budget = inputs.get_options(budget_opts, 'Enter budget to remove')
+
+    if inputs.get_yon(f'Are you sure you want to remove {budget}?') != 'y':
+        return
+    sql.delete_budget(budgets[budgets['name'] == budget].iloc[0]['id'])
 
 def View():
+    df = sql.get_budget()
+
     table = PrettyTable()
     table.align = 'r'
     table.field_names = df.columns

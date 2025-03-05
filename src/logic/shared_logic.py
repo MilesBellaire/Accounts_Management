@@ -148,7 +148,7 @@ def generate_accounts_df(include_tax=True):
 
 def solve_lp(l1, l2, l3):
     # Initialize the problem
-    problem = LpProblem("MultiDimensional_Variable", LpMaximize)
+    problem = LpProblem("MultiDimensional_Variable", LpMinimize)
 
     x = {(i, j): LpVariable(f"x{i}{j}", lowBound=0) for i in range(len(l1)) for j in range(len(l2))}
 
@@ -164,7 +164,7 @@ def solve_lp(l1, l2, l3):
         
 
     # Objective function: Not sure why we're summing them but if it works...
-    problem += lpSum(x[i,j]*l1[i] for i in range(len(l1)) for j in range(len(l2))), "Objective"
+    problem += lpSum(x[i,j]*(i+1)*(j+1)*l1[i] for i in range(len(l1)) for j in range(len(l2))), "Objective"
 
     # Solve the problem
     solver = PULP_CBC_CMD(msg=False)
@@ -195,6 +195,8 @@ def determine_budget_allocations(df: pd.DataFrame, include_tax=True):
     l1_name = sorted_df['Name'].tolist()
  
     sorted_df = df[df['Category'] != 'income'].sort_values(by='Percentage', ascending=False)
+    # Move Leftover to the end
+    sorted_df = pd.concat([sorted_df[sorted_df['Name'] != 'Leftover'], sorted_df[sorted_df['Name'] == 'Leftover']])
     l2 = sorted_df['Percentage'].tolist()
     l2_name = sorted_df['Name'].tolist()
 

@@ -1,6 +1,5 @@
 
 -- create budget_balance view
-begin
    drop view budget_balance;
    create view budget_balance as 
    with credits as (
@@ -14,24 +13,19 @@ begin
       left join account a on b.account_id = a.id
       left join distribution_budget db on db.budget_id = b.id
       left join distribution d on d.id = db.distribution_id
-      left join income i on i.primary_distribution_id = d.id
-      left join transact t on t.income_id = i.id
+      -- left join income i on i.id = d.income_id
+      left join transact t on t.distribution_id = d.id
       where t.debit_or_credit = '+' and is_transfer = 0
       group by a.name, b.id, b.name, a.id
       union all
-      select
-         2,
-         'savings', 
-         0, 
-         'unassigned', 
-      (
+      select 2, 'savings', 0, 'unassigned', (
          select sum(amount) 
          from transact 
          where is_transfer = 0 and debit_or_credit = '+'
       ) - sum(t.amount * db.weight)
       from transact t
-      join income i on t.income_id = i.id
-      join distribution d on i.primary_distribution_id = d.id
+      -- join income i on t.income_id = i.id
+      join distribution d on t.distribution_id = d.id
       join distribution_budget db on d.id = db.distribution_id
       join budget b on db.budget_id = b.id
    ),
@@ -67,10 +61,8 @@ begin
    left join debits on credits.budget_id = debits.id
    left join transfers on credits.budget_id = transfers.budget_id
    order by credits.account, credits.name;
-end
 
 -- validate
-begin
    select * from budget_balance;
 
    select account, sum(balance) from budget_balance group by account;
@@ -84,10 +76,8 @@ begin
 
    select round(sum(case when debit_or_credit = '+' then amount else -amount end), 2) as amount 
    from transact t;
-end
 
 -- transfer between accounts to equal
-begin
    drop view account_sys_diff;
    create view account_sys_diff as 
    with budgets as (
@@ -107,13 +97,11 @@ begin
    from budgets b
    join accounts a
    on a.account_id = b.account_id;
-end
 
 -- validate
-select * from account_sys_diff;
+   select * from account_sys_diff;
 
 --  create transfer table
-begin
    drop table budget_balance_transfer;
    create table budget_balance_transfer(
       id integer primary key AUTOINCREMENT,
@@ -124,7 +112,6 @@ begin
       foreign key (from_budget_id) references budget(id),
       foreign key (to_budget_id) references budget(id)
    );
-end
 
 SELECT name, type, sql 
 FROM sqlite_master 
