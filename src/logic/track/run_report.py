@@ -4,13 +4,17 @@ sys.path.append('./')
 import pandas as pd
 from database.dbio import sql
 from logic.shared_logic import generate_accounts_df
+from prettytable import PrettyTable
+from datetime import timedelta
 
 def run_report(start_date='1900-01-01', end_date=''):
    if not end_date: 
-      end_date = pd.to_datetime('now').strftime('%Y-%m-%d')
+      end_date = (pd.to_datetime('now') + timedelta(days=1)).strftime('%Y-%m-%d')
    else:
       start_date += '-01'
       end_date += '-01'
+
+   print(start_date, '-', end_date)
 
    staged_income = sql.get_staged_transactions_by_income()
    # report = sql.get_balance_update_report()
@@ -67,10 +71,41 @@ def run_report(start_date='1900-01-01', end_date=''):
    # report['total_credits'] = report['total_credits'].round(2)
    # report['new_balance'] = report['new_balance'].round(2)
 
-   report = sql.get_budget_balance(start_date, end_date)
+   report = sql.get_budget_balance_asof(start_date, end_date)
    report = report[[col for col in report.columns.tolist() if '_id' not in col]]
 
-   print(report.sort_values('account').round(2).reset_index(drop=True))
-   print(report.groupby('account').sum().round(2)[['total_debits', 'total_credits', 'balance']])
-   print()
-   print(report[['total_debits', 'total_credits', 'balance']].sum().round(2))
+   if report.empty: 
+      print('No transactions found')
+      return
+
+   # print(report.sort_values('account').round(2).reset_index(drop=True))
+   # print(report.groupby('account').sum().round(2)[['total_debits', 'total_credits', 'balance']])
+   # print()
+   # print(report[['total_debits', 'total_credits', 'balance']].sum().round(2))
+
+   by_budget = report.sort_values('account').round(2).reset_index(drop=True)
+   by_budget_table = PrettyTable()
+   by_budget_table.align = 'r'
+   by_budget_table.field_names = by_budget.columns
+   by_budget_table.add_rows(by_budget.values.tolist())
+   print(by_budget_table)
+
+   report['account'].fillna('savings', inplace=True)
+   by_account = report.groupby('account').sum().round(2)[['initial_balance', 'total_debits', 'total_credits', 'change', 'balance']]
+   # print(by_account)
+   by_account_table = PrettyTable()
+   by_account_table.align = 'r'
+   by_account_table.field_names = ['account'] + by_account.columns.tolist()
+   formatted_rows = [
+      [account] + [f"{value:.2f}" for value in by_account.loc[account]]
+      for account in by_account.index
+   ]
+   by_account_table.add_rows(formatted_rows)
+   print(by_account_table)
+
+   total = report[['initial_balance', 'total_debits', 'total_credits', 'change', 'balance']].sum().round(2)
+   total_table = PrettyTable()
+   total_table.align = 'r'
+   total_table.field_names = [''] + total.index.tolist()
+   total_table.add_row(['Totals'] + total.tolist())
+   print(total_table)

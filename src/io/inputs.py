@@ -1,6 +1,10 @@
+import sys
+sys.path.append('./')
+
 import pandas as pd
 from database.dbio import sql
 import re
+from logic.shared_logic import Evaluate_equation
 
 class inputs:
     def __init__(self):
@@ -25,6 +29,7 @@ class inputs:
             except ValueError:
                 print('Invalid input. Try again.')
 
+    @staticmethod
     def get_str(prompt: str) -> str:
         value = ''
         while True:
@@ -38,14 +43,34 @@ class inputs:
             except ValueError:
                 print('Invalid input. Try again.')
     
+
     @staticmethod
-    def get_options(options, prompt):
+    def get_int(prompt: str, lower_bound=None, upper_bound=None) -> int:
+        value = ''
+        while True:
+            try:
+                print()
+                value = input(prompt)
+                value = inputs._validate_initial_input(value)
+
+                value = int(value)
+                if lower_bound is not None and value < lower_bound:
+                    print('Invalid input. Try again.')
+                elif upper_bound is not None and value > upper_bound:
+                    print('Invalid input. Try again.')
+                else:
+                    return value
+            except ValueError:
+                print('Invalid input. Try again.')
+
+    @staticmethod
+    def get_options(options, prompt, additional_info=None):
         while True:
             print()
             print(prompt)
             print('Possible options:')
             for i, option in enumerate(options):
-                print(f'{i}: {option}')
+                print(f'{i}: {option}{" - "+additional_info[i] if additional_info is not None else ""}')
             try:
                 index = input('Enter index: ')
                 index = inputs._validate_initial_input(index)
@@ -107,13 +132,18 @@ class inputs:
     @staticmethod
     def get_equation() -> str:
         constants = sql.get_constants()['name'].tolist()
+        incomes = sql.get_income()
+        incomes = incomes[(incomes['unit'] == '$') | (incomes['unit'] == 'eq')]['name'].tolist()
+        budgets = sql.get_budget()
+        budgets = budgets[(budgets['unit'] == '$') | (budgets['unit'] == 'eq')]['name'].tolist()
 
         while True:
             print()
-            print('Format equation as: [self] + [const name] * [other const name]')
+            print('Format equation as: [self] + [var name] * [other const name]')
             print('Allowed operations: +, -, *, /')
-            print(f'Possible constants: {constants}')
+            print(f'Possible variables: {constants+incomes+budgets}')
             equation = input('Enter equation: ')
+            equation = inputs._validate_initial_input(equation)
             
             split_equation = re.split(r'[\*\+/\\-]', equation.replace(' ', ''))
             print(f'Split equation: {split_equation}')
@@ -123,17 +153,24 @@ class inputs:
                 if split[0] == '[' and split[-1] == ']':
                     if split[1:-1] == 'self':
                         contains_self = True
-                    elif split[1:-1] not in constants:
-                        print('Invalid constant. Try again.')
-                        invalid = True
-                        break
-                else:
-                    try:
-                        float(split)
-                    except:
-                        print('Invalid equation. Try again.')
-                        invalid = True
-                        break
+                #     elif split[1:-1] not in constants:
+                #         print('Invalid constant. Try again.')
+                #         invalid = True
+                #         break
+                # else:
+                #     try:
+                #         float(split)
+                #     except:
+                #         print('Invalid equation. Try again.')
+                #         invalid = True
+                #         break
+            try:
+                Evaluate_equation(equation, 0)
+            except ValueError:
+                print(ValueError)
+                print('Invalid equation. Try again.')
+                invalid = True
+            
             if not invalid and contains_self:
                 break
         return equation
@@ -145,6 +182,7 @@ class inputs:
             print()
             print(prompt)
             yon = input('Enter y or n: ')
+            inputs._validate_initial_input(yon)
             if yon != 'y' and yon != 'n':
                 print('Invalid input. Try again.')
         return yon
@@ -193,9 +231,9 @@ class inputs:
                 index = input('Enter index: ')
                 index = inputs._validate_initial_input(index)
 
-                if not index and num_required >= len(selected) and inputs.get_yon('Confirm?') == 'y':
+                if not index and num_required <= len(selected) and inputs.get_yon('Confirm?') == 'y':
                     break
-                elif not index and num_required < len(selected):
+                elif not index and num_required > len(selected):
                     print(f'{num_required} options required.')
                     continue
                 index = int(index)

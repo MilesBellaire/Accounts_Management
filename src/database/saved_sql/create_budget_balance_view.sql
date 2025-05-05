@@ -62,59 +62,45 @@
    left join transfers on credits.budget_id = transfers.budget_id
    order by credits.account, credits.name;
 
+-- Create budget_balance2
+   drop view budget_balance;
+   create view budget_balance
+   as
+   select a.name as account, ifnull(b.name, 'undecided') as name, 
+      sum(iif(debit_or_credit = '-', amount, 0)) as total_debits,
+      sum(iif(debit_or_credit = '+', amount, 0)) as total_credits,
+      sum(iif(debit_or_credit = '+', amount, -amount)) as balance,
+      account_id, 
+      budget_id
+   from budget_transact bt
+   left join budget b on bt.budget_id = b.id
+   left join account a on b.account_id = a.id
+   group by a.name, b.name
+   union
+   select a.name, b.name as budget, 0, 0, 0, account_id, b.id
+   from budget b
+   join account a on b.account_id = a.id
+   where b.id not in (select distinct budget_id from budget_transact)
+   order by a.name, b.name;
+
+
 -- validate
    select * from budget_balance;
 
-   select account, sum(balance) from budget_balance group by account;
-
+   select ifnull(account,'savings'), sum(balance) 
+   from budget_balance 
+   group by ifnull(account,'savings');
+   
    select a.name, round(sum(case when debit_or_credit = '+' then amount else -amount end), 2) as amount 
    from transact t
    left join account a on t.account_id = a.id
+   where is_transfer = 0 or transfer_id is not null
    group by a.id, a.name;
 
    select sum(balance) from budget_balance;
 
    select round(sum(case when debit_or_credit = '+' then amount else -amount end), 2) as amount 
-   from transact t;
+   from transact t
+   where is_transfer = 0 or transfer_id is not null;
 
--- transfer between accounts to equal
-   drop view account_sys_diff;
-   create view account_sys_diff as 
-   with budgets as (
-      select account_id, account, sum(balance) as amount from budget_balance group by account
-   ),
-   accounts as (
-      select ifnull(a.id, 4) as account_id, a.name, round(sum(case when debit_or_credit = '+' then amount else -amount end), 2) as amount 
-      from transact t
-      left join account a on t.account_id = a.id
-      group by a.id, a.name
-   )
-   select 
-      b.account,
-      b.amount as budget_balance,
-      a.amount as account_balance, 
-      b.amount - a.amount as diff
-   from budgets b
-   join accounts a
-   on a.account_id = b.account_id;
-
--- validate
-   select * from account_sys_diff;
-
---  create transfer table
-   drop table budget_balance_transfer;
-   create table budget_balance_transfer(
-      id integer primary key AUTOINCREMENT,
-      amount real,
-      from_budget_id integer,
-      to_budget_id integer,
-      date text,
-      foreign key (from_budget_id) references budget(id),
-      foreign key (to_budget_id) references budget(id)
-   );
-
-SELECT name, type, sql 
-FROM sqlite_master 
-WHERE type IN ('table', 'view') 
-ORDER BY name;
 

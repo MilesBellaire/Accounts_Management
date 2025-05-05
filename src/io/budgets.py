@@ -2,14 +2,12 @@ import sys
 sys.path.append('./')
 
 from database.dbio import sql
-import pandas as pd
 from inputs import inputs 
 from prettytable import PrettyTable
 
-units = sql.get_units().astype({'id': int})
+units = sql.get_budget_units().astype({'id': int})
 unit_opts = units['abv'].tolist()
 
-# Import tracking types and set id to int
 tracking_types = sql.get_tracking_types().astype({'id': int})
 tracking_type_opts = tracking_types['name'].tolist()
 
@@ -25,12 +23,12 @@ def Add():
 
     name = inputs.get_name(budgets['name'].tolist())
     unit = inputs.get_unit(unit_opts)
-    value = inputs.get_value('Enter value in $ per month' if unit == '$' else 'Enter value as %')
+    value = inputs.get_value('Enter value in $ per month' if unit in ('$', 'eq') else 'Enter value as %')
 
     if unit == '%lo-': cap = inputs.get_cap()
     else: cap = None
 
-    if unit == 'eq' and inputs.get_yon('Do you want to enter an equation?') == 'y': 
+    if unit == 'eq': # and inputs.get_yon('Do you want to enter an equation?') == 'y': 
         equation = inputs.get_equation()
     else: equation = None
 

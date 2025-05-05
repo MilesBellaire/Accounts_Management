@@ -191,3 +191,10 @@ Right now there is no asof date.  If there's a change in the ideal budgets then 
             - Maybe I could add a trigger for when income is updated it will clone the associated distribution
 - I could also just make a second transact table that is specifically for distributing payments 
    - So the transact table would connect to a distribution then all the transactions in the transact2 table would link to it aswell
+
+
+Ideas for later
+- add validation using account totals on statements
+- 
+
+Missing loss total balance when adding transfers.  Need to look into that.

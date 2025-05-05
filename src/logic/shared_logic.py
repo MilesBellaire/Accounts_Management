@@ -6,22 +6,51 @@ import re
 import pandas as pd
 from pulp import LpProblem, LpVariable, LpMinimize, LpMaximize, lpSum, PULP_CBC_CMD
 
-def Evaluate_equation(equation: str, base: float)-> float:
-    if equation == 'nan': return base
+def Evaluate_equation(equation: str, base: float, incomes_used=[], budgets_used=[])-> float:
+    # print(equation, base, incomes_used, budgets_used)
+    if equation in ('null', None, 'nan', ''): return base
 
     constants = sql.get_constants()
+    incomes = sql.get_income()
+    incomes = incomes[(incomes['unit'] == '$') | (incomes['unit'] == 'eq')]
+    budgets = sql.get_budget()
+    budgets = budgets[(budgets['unit'] == '$') | (budgets['unit'] == 'eq')]
+    
+
+    # print(incomes_used, budgets_used)
+
     split_equation = re.split(r'[\[\]]', equation.replace(' ', ''))
     filled_equation = ''
 
+
+    new_incomes_used = [incomes[incomes['name'] == split]['id'].iloc[0] for split in split_equation if len(incomes[incomes['name'] == split]['id'])] + incomes_used
+    new_budgets_used = [budgets[budgets['name'] == split]['id'].iloc[0] for split in split_equation if len(budgets[budgets['name'] == split]['id'])] + budgets_used
+
     for split in split_equation:
-        if split == 'self' or split in constants['name'].tolist():
-            if split == 'self':
-                filled_equation += str(base)
-            else:
-                filled_equation += str(constants[constants['name'] == split]['value'].iloc[0])
+        if split == 'self':
+            filled_equation += str(base)
+        elif split in constants['name'].tolist():
+            filled_equation += str(constants[constants['name'] == split]['value'].iloc[0])
+        elif split in incomes['name'].tolist():
+            if incomes[incomes['name'] == split]['id'].iloc[0] in incomes_used: continue
+            filled_equation += str(Evaluate_equation(
+                incomes[incomes['name'] == split]['equation'].iloc[0], 
+                incomes[incomes['name'] == split]['value'].iloc[0],
+                new_incomes_used,
+                new_budgets_used
+            ))
+        elif split in budgets['name'].tolist():
+            if budgets[budgets['name'] == split]['id'].iloc[0] in budgets_used: continue
+            filled_equation += str(Evaluate_equation(
+                budgets[budgets['name'] == split]['equation'].iloc[0], 
+                budgets[budgets['name'] == split]['value'].iloc[0],
+                new_incomes_used,
+                new_budgets_used
+            ))
         else:
             filled_equation += split
-    return eval(filled_equation)
+    # print(filled_equation)
+    return eval(filled_equation) # Very unsafe
 
 def get_dollars_per(per_month):
     return [

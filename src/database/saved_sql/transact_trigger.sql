@@ -12,7 +12,7 @@ begin
    from distribution d
    join income i on d.id = i.primary_distribution_id
    join transact t on i.id = t.income_id
-   where t.distribution_id is null and t.id = new.id;
+   where t.id = new.id;
 
    update transact
    set distribution_id = (
@@ -25,7 +25,7 @@ begin
       order by d2.id desc
       limit 1
    )
-   where distribution_id is null and id = new.id;
+   where id = new.id;
 
    insert into distribution_budget(distribution_id, weight, budget_id)
    select distinct d.id, db.weight, db.budget_id
@@ -60,7 +60,7 @@ begin
    from distribution d
    join income i on d.id = i.primary_distribution_id
    join transact t on i.id = t.income_id
-   where t.distribution_id is null and t.id = new.id;
+   where t.id = new.id;
 
    update transact
    set distribution_id = (
@@ -73,7 +73,7 @@ begin
       order by d2.id desc
       limit 1
    )
-   where distribution_id is null and id = new.id;
+   where id = new.id;
 
    insert into distribution_budget(distribution_id, weight, budget_id)
    select distinct d.id, db.weight, db.budget_id
@@ -88,28 +88,23 @@ end;
 -- update transact
 -- set income_id = income_id;
 
-insert into transact(income_id)
-values (1);
 
-insert into transact(budget_id)
-values (1);
+-- delete from distribution_budget
+-- where distribution_id in (
+--    select id 
+--    from distribution
+--    where original_id is not null
+-- )
+-- returning *;
 
-delete from distribution_budget
-where distribution_id in (
-   select id 
-   from distribution
-   where original_id is not null
-)
-returning *;
+-- delete from distribution
+-- where original_id is not null
+-- returning *;
 
-delete from distribution
-where original_id is not null
-returning *;
+-- select * from transact;
 
-select * from transact;
+-- update transact
+-- set distribution_id = null;
 
-update transact
-set distribution_id = null;
-
-delete from transact
-where date is null and insert_date is null;
+-- delete from transact
+-- where date is null and insert_date is null;

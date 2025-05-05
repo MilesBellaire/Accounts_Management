@@ -24,7 +24,7 @@ class sql:
 				i.id
 			from income i
 			join tracking_type t on i.tracking_type_id = t.id
-			join unit u on i.unit_id = u.id
+			join income_unit u on i.unit_id = u.id
 			left join distribution d on i.primary_distribution_id = d.id
 			left join distribution_budget db on d.id = db.distribution_id
 			left join budget b on db.budget_id = b.id
@@ -48,7 +48,7 @@ class sql:
 				b.id
 			from budget b
 			join tracking_type t on b.tracking_type_id = t.id
-			join unit u on b.unit_id = u.id
+			join budget_unit u on b.unit_id = u.id
 			join account a on b.account_id = a.id
 		"""
 
@@ -57,6 +57,7 @@ class sql:
 	def get_keyword(budget_id=None, income_id=None):
 		sql_query = f"""
 			select 
+				k.id,
 				k.text,
 				k.budget_id,
 				k.income_id
@@ -106,6 +107,14 @@ class sql:
 		sql.commit()
 
 		return sql._cursor.lastrowid
+	
+	def delete_keyword(id):
+		sql._cursor.execute(
+			"delete from keyword where id = ?;",
+			(id,),
+		)
+
+		sql.commit()
 
 	def get_account_id(account) -> int:
 		sql_query = f"select id from account where number = '{account}';"
@@ -127,7 +136,7 @@ class sql:
 				AND (
 					strftime('%Y', t1.date) = strftime('%Y', t2.date) and
 					strftime('%m', t1.date) = strftime('%m', t2.date) and 
-					abs(strftime('%d', t1.date) - strftime('%d', t2.date)) <= 1
+					abs(strftime('%d', t1.date) - strftime('%d', t2.date)) <= 2
 				)
 				AND t1.debit_or_credit <> t2.debit_or_credit
 				AND t2.transfer_id IS NULL or t2.transfer_id = t1.id
@@ -192,6 +201,39 @@ class sql:
 		sql_query = "delete from transact where statement_id = ?;"
 		sql._cursor.execute(sql_query,(id,))
 
+		sql_query = """delete from distribution_budget 
+			where distribution_id in (
+				select d.id 
+				from distribution d
+				join transact t on d.id = t.distribution_id
+				group by d.id
+				having count(distinct t.statement_id) = 1
+			) and distribution_id in (
+				select d.id 
+				from distribution d
+				join transact t on d.id = t.distribution_id
+				where t.statement_id = ?
+			);
+		"""
+		sql._cursor.execute(sql_query,(id,))
+
+		sql_query = """
+			delete from distribution 
+			where id in (
+				select d.id 
+				from distribution d
+				join transact t on d.id = t.distribution_id
+				group by d.id
+				having count(distinct t.statement_id) = 1
+			) and id in (
+				select d.id 
+				from distribution d
+				join transact t on d.id = t.distribution_id
+				where t.statement_id = ?
+			);
+		"""
+		sql._cursor.execute(sql_query,(id,))
+
 		sql.commit()
 
 	def statement_exists(filename):
@@ -238,34 +280,73 @@ class sql:
 
 		sql.commit()
 	
-	def get_budget_balance():
+	def get_budget_balances():
 		sql_query = f"""
 			select * from budget_balance;
 		"""
 		return pd.read_sql_query(sql_query, sql._conn)
 	
 	# date should be in the form of "YYYY-MM-DD"
-	def get_budget_balance(start_date: str, end_date: str):
+	def get_budget_balance_asof(start_date: str, end_date: str):
 		start = start_date.split('-')
 		end = end_date.split('-')
 		sql_query = f"""
+			with initial_budget as (
+				select 
+					a.name as account,
+					ifnull(b.name, 'undecided') as name,
+					sum(iif(bt.debit_or_credit = '+', ifnull(bt.amount, 0), ifnull(-bt.amount,0))) as balance,
+					a.id as account_id,
+					ifnull(b.id, 0) as budget_id
+				from budget_transact bt
+				left join budget b on bt.budget_id = b.id
+				left join transact t on bt.transact_id = t.id
+				left join account a on b.account_id = a.id
+				where bt.date < '{start[0]}-{start[1]}-{start[2]} 00:00:00'
+				group by a.name, b.name
+			),
+			new_balance as (
+				select 
+					a.name as account,
+					ifnull(b.name, 'undecided') as name,
+					-- ifnull(ib.balance,0.0) as initial_balance,
+					sum(iif(bt.debit_or_credit = '+', 0, bt.amount)) as total_debits,
+					sum(iif(bt.debit_or_credit = '+', bt.amount, 0)) as total_credits,
+					sum(iif(bt.debit_or_credit = '+', bt.amount, -bt.amount)) as change,
+					-- sum(iif(bt.debit_or_credit = '+', bt.amount, -bt.amount)) + ifnull(ib.balance,0) as balance,
+					a.id as account_id,
+					ifnull(b.id,0) as budget_id
+				from budget_transact bt
+				left join budget b on bt.budget_id = b.id
+				left join transact t on bt.transact_id = t.id
+				left join account a on b.account_id = a.id
+				-- left join initial_budget ib on ifnull(b.name, 'undecided') = ib.name
+				where bt.date >= '{start[0]}-{start[1]}-{start[2]} 00:00:00' and bt.date < '{end[0]}-{end[1]}-{end[2]} 00:00:00'
+				group by a.name, b.name--, ib.balance
+			)
+			-- select * from new_balance;
 			select 
-				a.name as account,
-				ifnull(b.name, 'undecided') as name,
-				sum(iif(bt.debit_or_credit = '+', 0, bt.amount)) as total_debits,
-				sum(iif(bt.debit_or_credit = '+', bt.amount, 0)) as total_credits,
-				sum(iif(bt.debit_or_credit = '+', bt.amount, -bt.amount)) as balance,
-				a.id as account_id,
-				b.id as budget_id
-			from budget_transact bt
-			left join budget b on bt.budget_id = b.id
-			left join transact t on bt.transact_id = t.id
-			left join account a on b.account_id = a.id
-			where bt.date >= '{start[0]}-{start[1]}-{start[2]} 00:00:00' and bt.date < '{end[0]}-{end[1]}-{end[2]} 00:00:00'
-			group by a.name, b.name
+				budget_balance.account,
+				budget_balance.name,
+				ifnull(initial_budget.balance,0.0) as initial_balance,
+				ifnull(new_balance.total_debits,0.0) as total_debits,
+				ifnull(new_balance.total_credits,0.0) as total_credits,
+				ifnull(new_balance.change,0.0) as change,
+				ifnull(new_balance.change,0.0) + ifnull(initial_budget.balance,0) as balance,
+				budget_balance.account_id,
+				budget_balance.budget_id
+			from budget_balance
+			left join new_balance on budget_balance.budget_id = new_balance.budget_id
+			left join initial_budget on budget_balance.budget_id = initial_budget.budget_id;
 		"""
 		return pd.read_sql_query(sql_query, sql._conn)
 	
+	def get_budget_balance(name):
+		sql_query = f"""
+			select balance from budget_balance where name = ?;
+		"""
+		return sql._cursor.execute(sql_query,(name,)).fetchone()[0]
+
 	def insert_budget_balance_transfer(from_budget_id, to_budget_id, amount):
 		sql_query = f"""
 			insert into budget_balance_transfer (from_budget_id, to_budget_id, amount, date)
@@ -311,9 +392,15 @@ class sql:
 		sql._cursor.execute(sql_query)
 		sql.commit()
 
-	def get_units():
+	def get_budget_units():
 		sql_query = f"""
-			select * from unit;
+			select * from budget_unit;
+		"""
+		return pd.read_sql_query(sql_query, sql._conn)
+
+	def get_income_units():
+		sql_query = f"""
+			select * from income_unit;
 		"""
 		return pd.read_sql_query(sql_query, sql._conn)
 	
@@ -367,10 +454,13 @@ class sql:
 		sql.commit()
 
 	def delete_budget(budget_id):
-		sql_query = f"""
-			delete from budget where id = {budget_id};
-		"""
-		sql._cursor.execute(sql_query)
+		delete_budget = f"delete from budget where id = {budget_id};"
+		delete_distribution_budget = f"delete from distribution_budget where budget_id = {budget_id};"
+		update_transact = f"update transact set budget_id = -1 where budget_id = {budget_id};"
+		
+		sql._cursor.execute(delete_budget)
+		sql._cursor.execute(delete_distribution_budget)
+		sql._cursor.execute(update_transact)
 		sql.commit()
 
 	def insert_distribution_budget(income_id, budget_id):
@@ -383,3 +473,101 @@ class sql:
 		sql.commit()
 
 		return sql._cursor.lastrowid
+
+	def insert_income(name, equation, tags, tracking_type_id, unit_id, value, budget_ids):
+		create_income = f"""
+			insert into income(name, equation, tags, tracking_type_id, unit_id, value)
+			values (
+				'{name}', 
+				{'\''+equation+'\'' if equation else 'null'}, 
+				'{tags}', 
+				{tracking_type_id}, 
+				{unit_id if unit_id else 'null'}, 
+				{value}
+			);
+		"""
+		sql._cursor.execute(create_income)
+		new_income_id = sql._cursor.lastrowid
+
+		create_distribution = f"""
+			insert into distribution(name, income_id)
+			select 'primary', i.id
+			from income i
+			where i.id = {new_income_id};
+		"""
+		sql._cursor.execute(create_distribution)
+		new_id = sql._cursor.lastrowid
+
+		update_income_with_distribution = f"""
+			update income
+			set primary_distribution_id = {new_id}
+			where id = {new_income_id};
+		"""
+		sql._cursor.execute(update_income_with_distribution)
+
+		for id in budget_ids:
+			create_distribution_budget = f"""
+				insert into distribution_budget(distribution_id, budget_id, weight)
+				select {new_id}, {id}, 0
+				from budget
+				where id = {id};
+			"""
+			sql._cursor.execute(create_distribution_budget)
+		sql.commit()
+
+		return sql._cursor.lastrowid
+	
+	def update_income(income_id, name, equation, tags, tracking_type_id, unit_id, value):
+		sql_query = f"""
+			update income
+			set name = '{name}', 
+				equation = {'\''+equation+'\'' if equation else 'null'}, 
+				tags = '{tags}', 
+				tracking_type_id = {tracking_type_id}, 
+				unit_id = {unit_id}, 
+				value = {value}
+			where id = {income_id};
+		"""
+		sql._cursor.execute(sql_query)
+		sql.commit()
+
+	def delete_income(income_id):
+		delete_income = f"delete from income where id = {income_id};"
+		delete_distribution_budget = f"""
+			delete from distribution_budget
+			where distribution_id in (
+				select id
+				from distribution
+				where income_id = {income_id}
+			);
+		"""
+		delete_distribution = f"delete from distribution where income_id = {income_id};"
+		update_transact = f"update transact set income_id = -1 where income_id = {income_id};"
+
+		sql._cursor.execute(delete_income)
+		sql._cursor.execute(delete_distribution_budget)
+		sql._cursor.execute(delete_distribution)
+		sql._cursor.execute(update_transact)
+		sql.commit()
+
+	def get_transact_amount_by_income(income_id):
+		sql_query = f"""
+			select sum(amount) from transact
+			where distribution_id in (
+				select id
+				from distribution
+				where income_id = {income_id}
+			);
+		"""
+		return pd.read_sql_query(sql_query, sql._conn)
+	
+	def get_transact_amount_by_budget(budget_id):
+		sql_query = f"""
+			select sum(amount) from transact
+			where distribution_id in (
+				select id
+				from distribution
+				where budget_id = {budget_id}
+			);
+		"""
+		return pd.read_sql_query(sql_query, sql._conn)
