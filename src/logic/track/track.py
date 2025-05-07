@@ -3,7 +3,7 @@ sys.path.append('./')
 
 import pandas as pd
 from inputs import inputs
-from database.dbio import sql
+from database.io.dbio import sql
 from logic.parsers import parse
 
 def track(file_name):
@@ -12,14 +12,14 @@ def track(file_name):
    credits = transactions.loc[transactions['DebitOrCredit'] == '+']
    debits = transactions.loc[transactions['DebitOrCredit'] == '-']
    # print(count)
-   budgets = sql.get_budget()
-   incomes = sql.get_income()
+   budgets = sql.budget.get()
+   incomes = sql.income.get()
 
    for i, row in debits.iterrows():
          if row['IsTransfer'] == 1: continue
 
       # if row['CheckingOrSavings'] == 'c':
-         keyword_matches = sql.get_budget_id_by_keyword(row['Description'])
+         keyword_matches = sql.budget.get_id_by_keyword(row['Description'])
          # print(len(keyword_matches))
 
          # If multiple keywords match
@@ -62,7 +62,7 @@ def track(file_name):
    for i, row in credits.iterrows():
       if row['IsTransfer'] == 1: continue
 
-      keyword_matches = sql.get_income_id_by_keyword(row['Description'])
+      keyword_matches = sql.income.get_id_by_keyword(row['Description'])
       # print(len(keyword_matches))
       # If multiple keywords match
       if len(keyword_matches) > 1:
@@ -124,6 +124,6 @@ def track(file_name):
 
    transactions = pd.concat([debits, credits], ignore_index=True)
 
-   sql.stage_transactions(transactions)
+   sql.statement.stage_transactions(transactions)
 
    # sql.close()

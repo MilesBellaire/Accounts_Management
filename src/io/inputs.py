@@ -2,7 +2,7 @@ import sys
 sys.path.append('./')
 
 import pandas as pd
-from database.dbio import sql
+from database.io.dbio import sql
 import re
 from logic.shared_logic import Evaluate_equation
 
@@ -132,9 +132,9 @@ class inputs:
     @staticmethod
     def get_equation() -> str:
         constants = sql.get_constants()['name'].tolist()
-        incomes = sql.get_income()
+        incomes = sql.income.get()
         incomes = incomes[(incomes['unit'] == '$') | (incomes['unit'] == 'eq')]['name'].tolist()
-        budgets = sql.get_budget()
+        budgets = sql.budget.get()
         budgets = budgets[(budgets['unit'] == '$') | (budgets['unit'] == 'eq')]['name'].tolist()
 
         while True:

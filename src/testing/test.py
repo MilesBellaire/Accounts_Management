@@ -120,6 +120,6 @@ def determine_budget_allocations(df: pd.DataFrame, income: pd.DataFrame, budget:
 
 
 
-determine_budget_allocations(generate_accounts_df(), sql.get_income(), sql.get_budget())
+determine_budget_allocations(generate_accounts_df(), sql.income.get(), sql.budget.get())
 
 sql.close()

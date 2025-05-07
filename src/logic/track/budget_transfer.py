@@ -3,10 +3,10 @@ sys.path.append('./')
 
 import pandas as pd
 from inputs import inputs
-from database.dbio import sql
+from database.io.dbio import sql
 
 def transfer_budget():
-   budgets = sql.get_budget_balances()
+   budgets = sql.budget_balance.get_all()
    budget_opts = budgets['name'].tolist()
    budget_info = [f"${round(b,2)}" for b in budgets['balance'].tolist()]
 
@@ -38,4 +38,4 @@ def transfer_budget():
    if inputs.get_yon(f'Are you sure you want to complete this transfer?') != 'y':
       return
 
-   sql.insert_budget_balance_transfer(int(frombudget_id), int(tobudget_id), amount)
+   sql.budget_balance.insert_transfer(int(frombudget_id), int(tobudget_id), amount)

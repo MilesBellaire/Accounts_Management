@@ -1,11 +1,11 @@
 import sys
 sys.path.append('./')
 
-from database.dbio import sql
+from database.io.dbio import sql
 from inputs import inputs 
 from prettytable import PrettyTable
 
-units = sql.get_budget_units().astype({'id': int})
+units = sql.budget.get_units().astype({'id': int})
 unit_opts = units['abv'].tolist()
 
 tracking_types = sql.get_tracking_types().astype({'id': int})
@@ -14,11 +14,11 @@ tracking_type_opts = tracking_types['name'].tolist()
 accounts = sql.get_accounts().astype({'id': int})
 account_opts = accounts['name'].tolist()
 
-incomes = sql.get_income()
+incomes = sql.income.get()
 income_opts = incomes['name'].tolist()
 
 def Add():
-    budgets = sql.get_budget()
+    budgets = sql.budget.get()
 
 
     name = inputs.get_name(budgets['name'].tolist())
@@ -38,7 +38,7 @@ def Add():
 
     attached_incomes = inputs.multi_select(income_opts, 'Enter incomes that will contribute to this budget')
 
-    new_id = sql.insert_budget(
+    new_id = sql.budget.insert(
         name, 
         equation, 
         tags, 
@@ -57,7 +57,7 @@ def Add():
 
 def Update():
     # turn nans in to none
-    budgets = sql.get_budget().fillna('')
+    budgets = sql.budget.get().fillna('')
     budget_opts = budgets['name'].tolist()
 
     budget = inputs.get_options(budget_opts, 'Enter budget to update')
@@ -95,7 +95,7 @@ def Update():
         val = inputs.get_options(account_opts, 'Enter account')
     row[column] = val
 
-    sql.update_budget(
+    sql.budget.update(
         row['id'], 
         row['name'], 
         row['equation'], 
@@ -109,17 +109,17 @@ def Update():
 
 
 def Remove():
-    budgets = sql.get_budget()
+    budgets = sql.budget.get()
     budget_opts = budgets['name'].tolist()
 
     budget = inputs.get_options(budget_opts, 'Enter budget to remove')
 
     if inputs.get_yon(f'Are you sure you want to remove {budget}?') != 'y':
         return
-    sql.delete_budget(budgets[budgets['name'] == budget].iloc[0]['id'])
+    sql.budget.delete(budgets[budgets['name'] == budget].iloc[0]['id'])
 
 def View():
-    df = sql.get_budget()
+    df = sql.budget.get()
 
     table = PrettyTable()
     table.align = 'r'

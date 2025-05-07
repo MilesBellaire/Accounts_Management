@@ -1,13 +1,13 @@
 
 from prettytable import PrettyTable
 import logic.shared_logic as shared_logic
-from database.dbio import sql
+from database.io.dbio import sql
 
 def income_percentages():
     df = shared_logic.generate_accounts_df()
     df = df.drop(['id'], axis=1)
 
-    budgets = sql.get_budget()
+    budgets = sql.budget.get()
 
     for i, row in df.iterrows():
         if row['Name'] in budgets['name'].values:

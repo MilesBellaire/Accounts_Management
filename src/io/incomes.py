@@ -1,21 +1,21 @@
 import sys
 sys.path.append('./')
 
-from database.dbio import sql
+from database.io.dbio import sql
 from inputs import inputs 
 from prettytable import PrettyTable
 
-units = sql.get_income_units().astype({'id': int})
+units = sql.income.get_units().astype({'id': int})
 unit_opts = units['abv'].tolist()
 
 tracking_types = sql.get_tracking_types().astype({'id': int})
 tracking_type_opts = tracking_types['name'].tolist()
 
-budgets = sql.get_budget()
+budgets = sql.budget.get()
 budget_opts = budgets['name'].tolist()
 
 def Add():
-    incomes = sql.get_income()
+    incomes = sql.income.get()
 
     name = inputs.get_name(incomes['name'].tolist())
     unit = inputs.get_unit(unit_opts)
@@ -30,7 +30,7 @@ def Add():
 
     attached_budgets = inputs.multi_select(budget_opts, 'Enter budgets that this income will contribute to')
 
-    sql.insert_income(
+    sql.income.insert(
         name, 
         equation, 
         tags, 
@@ -42,7 +42,7 @@ def Add():
 
 def Update():
     # turn nans in to none
-    incomes = sql.get_income().fillna('')
+    incomes = sql.income.get().fillna('')
     income_opts = incomes['name'].tolist()
 
     income = inputs.get_options(income_opts, 'Enter income to update')
@@ -74,7 +74,7 @@ def Update():
         val = inputs.get_options(tracking_type_opts, 'Enter tracking type')
     row[column] = val
 
-    sql.update_income(
+    sql.income.update(
         row['id'], 
         row['name'], 
         row['equation'], 
@@ -86,17 +86,17 @@ def Update():
 
 
 def Remove():
-    incomes = sql.get_income()
+    incomes = sql.income.get()
     income_opts = incomes['name'].tolist()
 
     income = inputs.get_options(income_opts, 'Enter income to remove')
 
     if inputs.get_yon(f'Are you sure you want to remove {income}?') != 'y':
         return
-    sql.delete_income(incomes[incomes['name'] == income].iloc[0]['id'])
+    sql.income.delete(incomes[incomes['name'] == income].iloc[0]['id'])
 
 def View():
-    df = sql.get_income()
+    df = sql.income.get()
 
     table = PrettyTable()
     table.align = 'r'

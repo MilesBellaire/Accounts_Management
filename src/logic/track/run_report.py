@@ -2,7 +2,7 @@ import sys
 sys.path.append('./')
 
 import pandas as pd
-from database.dbio import sql
+from database.io.dbio import sql
 from logic.shared_logic import generate_accounts_df
 from prettytable import PrettyTable
 from datetime import timedelta
@@ -71,7 +71,7 @@ def run_report(start_date='1900-01-01', end_date=''):
    # report['total_credits'] = report['total_credits'].round(2)
    # report['new_balance'] = report['new_balance'].round(2)
 
-   report = sql.get_budget_balance_asof(start_date, end_date)
+   report = sql.budget_balance.get_asof(start_date, end_date)
    report = report[[col for col in report.columns.tolist() if '_id' not in col]]
 
    if report.empty: 

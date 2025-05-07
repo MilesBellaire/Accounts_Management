@@ -1,7 +1,7 @@
 import sys
 sys.path.append('./')
 
-from database.dbio import sql
+from database.io.dbio import sql
 import re
 import pandas as pd
 from pulp import LpProblem, LpVariable, LpMinimize, LpMaximize, lpSum, PULP_CBC_CMD
@@ -11,9 +11,9 @@ def Evaluate_equation(equation: str, base: float, incomes_used=[], budgets_used=
     if equation in ('null', None, 'nan', ''): return base
 
     constants = sql.get_constants()
-    incomes = sql.get_income()
+    incomes = sql.income.get()
     incomes = incomes[(incomes['unit'] == '$') | (incomes['unit'] == 'eq')]
-    budgets = sql.get_budget()
+    budgets = sql.budget.get()
     budgets = budgets[(budgets['unit'] == '$') | (budgets['unit'] == 'eq')]
     
 
@@ -62,8 +62,8 @@ def get_dollars_per(per_month):
     ]
 
 def generate_accounts_df(include_tax=True):
-    incomes = sql.get_income()
-    budgets = sql.get_budget()
+    incomes = sql.income.get()
+    budgets = sql.budget.get()
 
     # Drop other
     incomes = incomes[incomes['name'] != 'other']
@@ -206,7 +206,7 @@ def solve_lp(l1, l2, l3):
 # With this refact I want to leave out the leftover
 def determine_budget_allocations(df: pd.DataFrame, include_tax=True):
 
-    income = sql.get_income()
+    income = sql.income.get()
     income = income[income['name'] != 'other']
 
     if not include_tax and 'taxes' in df['Name'].tolist():

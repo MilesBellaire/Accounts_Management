@@ -4,7 +4,7 @@ sys.path.append('./')
 import PyPDF2
 import re
 import pandas as pd
-from database.dbio import sql
+from database.io.dbio import sql
 from inputs import inputs
 
 def parse(filename):
@@ -33,11 +33,11 @@ def personal_statement(filename:str, text:str):
    start_date = f"{dates_through.group(1)} {dates_through.group(3)}"
    end_date = f"{dates_through.group(2)} {dates_through.group(3)}"
 
-   if sql.statement_exists(filename) > 0: 
-      statement_id = sql.get_statement_id(filename)
+   if sql.statement.exists(filename) > 0: 
+      statement_id = sql.statement.get_id(filename)
       val = inputs.get_yon(f"Statement {filename} already exists. Overwrite?")
-      if val == 'y': sql.delete_statement(statement_id)
-   statement_id = sql.insert_statement(filename, pd.to_datetime(start_date), pd.to_datetime(end_date))
+      if val == 'y': sql.statement.delete(statement_id)
+   statement_id = sql.statement.insert(filename, pd.to_datetime(start_date), pd.to_datetime(end_date))
 
    # print(start_date, end_date)
    checking = True
@@ -100,11 +100,11 @@ def creditcard_statement(filename:str, text:str):
    end_date = f"{dates_through.group(3)} {dates_through.group(4)}"
    # print(start_date, end_date)
 
-   if sql.statement_exists(filename) > 0: 
-      statement_id = sql.get_statement_id(filename)
+   if sql.statement.exists(filename) > 0: 
+      statement_id = sql.statement.get_id(filename)
       val = inputs.get_yon(f"Statement {filename} already exists. Overwrite?")
-      if val == 'y': sql.delete_statement(statement_id)
-   statement_id = sql.insert_statement(filename, pd.to_datetime(start_date), pd.to_datetime(end_date))
+      if val == 'y': sql.statement.delete(statement_id)
+   statement_id = sql.statement.insert(filename, pd.to_datetime(start_date), pd.to_datetime(end_date))
 
    # print(start_date, end_date)
    checking = True
