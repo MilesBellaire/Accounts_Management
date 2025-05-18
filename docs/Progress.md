@@ -198,3 +198,9 @@ Ideas for later
 - 
 
 Missing loss total balance when adding transfers.  Need to look into that.
+
+System doesn't really work well with deleting items right now.
+Need to...
+- Decide how to handle deletes
+   - Update budget and income delete options
+- Need to update distribution weight insertions be(done)

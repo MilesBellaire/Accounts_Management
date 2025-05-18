@@ -23,3 +23,6 @@
 
 -- validate
    select * from account_sys_diff;
+
+   select sum(budget_balance), sum(account_balance), sum(diff)
+   from account_sys_diff;

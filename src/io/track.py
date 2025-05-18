@@ -4,6 +4,7 @@ sys.path.append('./')
 from logic.track.track import track
 from logic.track.run_report import run_report
 from logic.track.budget_transfer import transfer_budget
+from logic.track.pie_charts import pie_chart
 from inputs import inputs
 import pandas as pd
 
@@ -18,6 +19,7 @@ def track_choices():
         print('2. Run Report asof today')
         print('3. Run Report by month')
         print('4. Transfer Budgets')
+        print('5. Graphs')
         print('0. Back')
         choice = int(input('Enter your choice: '))
 
@@ -34,5 +36,7 @@ def track_choices():
             run_report(month, next_month)
         elif choice == 4:
             transfer_budget()
+        elif choice == 5:
+            pie_chart()
 
 track_choices()

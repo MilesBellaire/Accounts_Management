@@ -219,8 +219,7 @@ class inputs:
         return date
 
     @staticmethod
-    def multi_select(options: list, prompt: str, num_required=0) -> list:
-        selected = []
+    def multi_select(options: list, prompt: str, num_required=0, selected=[]) -> list:
         while True:
             print()
             print(prompt)

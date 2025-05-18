@@ -64,16 +64,19 @@ def Update():
 
     row = budgets[budgets['name'] == budget].iloc[0]
     
-    column = inputs.get_options([
-        'name',
-        'unit',
-        'value',
-        'tags',
-        'tracking_type',
-        'account',
-    ] + (['equation'] if row['unit'] == 'eq' else [])
-    + (['cap'] if row['unit'] == '%lo-' else [])
-    , 'Enter column to update')
+    column = inputs.get_options(
+        [
+            'name',
+            'unit',
+            'value',
+            'tags',
+            'tracking_type',
+            'account',
+        ] + 
+        (['equation'] if row['unit'] == 'eq' else []) + 
+        (['cap'] if row['unit'] == '%lo-' else []), 
+        'Enter column to update'
+    )
 
     val = ''
     if column == 'name':

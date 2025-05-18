@@ -25,7 +25,7 @@ class sql:
 				k.budget_id,
 				k.income_id
 			from keyword k
-			"""
+		"""
 
 		if budget_id: sql_query += f"where k.budget_id = {budget_id}"
 		elif income_id: sql_query += f"where k.income_id = {income_id}"
@@ -55,6 +55,7 @@ class sql:
 		sql_query = "select * from constants;"
 		return pd.read_sql_query(sql_query, sql._conn)
 	
+	# Not used
 	def validate_staged_transactions(asof_date):
 		sql_query = f"""
 			select *
@@ -70,7 +71,7 @@ class sql:
 		"""
 		return pd.read_sql_query(sql_query, sql._conn)
 	
-	def get_staged_transactions_by_income():
+	def get_transactions_by_income():
 		sql_query = f"""
 			select i.id, i.name, sum(amount) as credit
 			from transact t
@@ -113,6 +114,16 @@ class sql:
 		sql._conn.commit()
 
 		return sql._cursor.lastrowid
+	
+	# Not used
+	def delete_distribution_budget(income_id, budget_id):
+		sql_query = f"""
+			delete from distribution_budget
+			where distribution_id = (select primary_distribution_id from income where id = {income_id})
+				and budget_id = {budget_id};
+		"""
+		sql._cursor.execute(sql_query)
+		sql._conn.commit()
 
 	def get_transact_amount_by_income(income_id):
 		sql_query = f"""
@@ -133,5 +144,11 @@ class sql:
 				from distribution
 				where budget_id = {budget_id}
 			);
+		"""
+		return pd.read_sql_query(sql_query, sql._conn)
+	
+	def get_account_balance_diffs():
+		sql_query = f"""
+			select * from account_sys_diff;
 		"""
 		return pd.read_sql_query(sql_query, sql._conn)

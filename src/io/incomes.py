@@ -43,20 +43,26 @@ def Add():
 def Update():
     # turn nans in to none
     incomes = sql.income.get().fillna('')
+    incomes = incomes[incomes['name'] != 'other']
+    incomes['budgets'] = [b.split(', ') for b in incomes['budgets'] ]
     income_opts = incomes['name'].tolist()
 
     income = inputs.get_options(income_opts, 'Enter income to update')
 
     row = incomes[incomes['name'] == income].iloc[0]
     
-    column = inputs.get_options([
-        'name',
-        'unit',
-        'value',
-        'tags',
-        'tracking_type',
-    ] + (['equation'] if row['unit'] == 'eq' else [])
-    , 'Enter column to update')
+    column = inputs.get_options(
+        [
+            'name',
+            'unit',
+            'value',
+            'tags',
+            'tracking_type',
+            'budgets',
+        ] + 
+        (['equation'] if row['unit'] == 'eq' else []), 
+        'Enter column to update'
+    )
 
     val = ''
     if column == 'name':
@@ -72,6 +78,13 @@ def Update():
         val = inputs.get_equation()
     elif column == 'tracking_type':
         val = inputs.get_options(tracking_type_opts, 'Enter tracking type')
+    elif column == 'budgets':
+        print([i for i, budget in enumerate(budget_opts) if budget in row['budgets']])
+        val = inputs.multi_select(
+            budget_opts, 
+            'Enter budgets that this income will contribute to', 
+            selected=[i for i, budget in enumerate(budget_opts) if budget in row['budgets']]
+        )
     row[column] = val
 
     sql.income.update(
@@ -81,7 +94,8 @@ def Update():
         row['tags'], 
         tracking_types[tracking_types['name'] == row['tracking_type']].iloc[0]['id'], 
         units[units['abv'] == row['unit']].iloc[0]['id'], 
-        row['value']
+        row['value'],
+        [budgets[budgets['name'] == budget].iloc[0]['id'] for budget in row['budgets']]
     )
 
 

@@ -94,7 +94,7 @@ class income:
 
       return self._cursor.lastrowid
 
-   def update(self, income_id, name, equation, tags, tracking_type_id, unit_id, value):
+   def update(self, income_id, name, equation, tags, tracking_type_id, unit_id, value, budget_ids):
       sql_query = f"""
          update income
          set name = '{name}', 
@@ -106,6 +106,27 @@ class income:
          where id = {income_id};
       """
       self._cursor.execute(sql_query)
+
+      delete_distribution_budget = f"""
+         delete from distribution_budget
+         where distribution_id in (
+            select d.id
+            from distribution d
+            join income i on d.id = i.primary_distribution_id
+            where i.id = {income_id}
+         );
+      """
+      self._cursor.execute(delete_distribution_budget)
+
+      for id in budget_ids:
+         create_distribution_budget = f"""
+            insert into distribution_budget(distribution_id, budget_id, weight)
+            select {income_id}, {id}, 0
+            from budget
+            where id = {id};
+         """
+         self._cursor.execute(create_distribution_budget)
+
       self._conn.commit()
 
    def delete(self, income_id):
@@ -126,3 +147,16 @@ class income:
       self._cursor.execute(delete_distribution)
       self._cursor.execute(update_transact)
       self._conn.commit()
+
+   # Unused
+   def get_budget_ids(self, income_id):
+      sql_query = f"""
+         select budget_id
+         from distribution_budget
+         where distribution_id in (
+            select id
+            from distribution
+            where income_id = {income_id}
+         );
+      """
+      return pd.read_sql_query(sql_query, self._conn)

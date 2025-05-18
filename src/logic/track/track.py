@@ -5,8 +5,12 @@ import pandas as pd
 from inputs import inputs
 from database.io.dbio import sql
 from logic.parsers import parse
+from logic.track.update_budget_distribution_weights import update_budget_distribution_weights
 
 def track(file_name):
+
+   if not update_budget_distribution_weights(): return
+
    transactions = parse(file_name)
 
    credits = transactions.loc[transactions['DebitOrCredit'] == '+']
