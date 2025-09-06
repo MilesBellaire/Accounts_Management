@@ -66,7 +66,8 @@ def run_report(start_date='1900-01-01', end_date=''):
    total_table.add_row(['Totals'] + total.tolist())
    print(total_table)
 
-
+   if end_date != (pd.to_datetime('now') + timedelta(days=1)).strftime('%Y-%m-%d'): return
+   
    df = sql.get_account_balance_diffs()
 
    table = PrettyTable()

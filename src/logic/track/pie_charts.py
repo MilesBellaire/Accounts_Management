@@ -1,6 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
+import matplotlib.cm as cm
 import numpy as np
 from database.io.dbio import sql
 from datetime import timedelta
@@ -59,7 +59,7 @@ def pie_chart(start_date='1900-01-01', end_date=''):
 
    # Group with positive balances only for pie charts
    grouped = by_budget[by_budget['balance'] > 0].groupby('account')
-   num_accounts = len(grouped)
+   num_accounts = len(grouped)+1
 
    # Create combined figure
    fig = plt.figure(figsize=(4 * num_accounts, 10))
@@ -79,6 +79,24 @@ def pie_chart(start_date='1900-01-01', end_date=''):
       ax = fig.add_subplot(gs[0, i])
       ax.pie(balances, labels=group['name'], autopct='%1.1f%%', colors=shades)
       ax.set_title(f'Account: {account}')
+
+   # Totals pie chart
+   by_account = grouped.sum()
+   ax = fig.add_subplot(gs[0, num_accounts - 1])
+
+   # Sample one color per account from its assigned colormap
+   color_list = [
+      cm.get_cmap(account_to_cmap[acc])(0.6)  # Pick a middle color (0.6) from the colormap
+      for acc in by_account.index
+   ]
+
+   ax.pie(
+      by_account['balance'],
+      labels=by_account.index,
+      autopct='%1.1f%%',
+      colors=color_list
+   )
+   ax.set_title('Totals')
 
    # --- BAR GRAPH BELOW PIE CHARTS ---
    ax_bar = fig.add_subplot(gs[1, :])  # Span all columns

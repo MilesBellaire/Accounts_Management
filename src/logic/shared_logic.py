@@ -61,15 +61,16 @@ def get_dollars_per(per_month):
         '${:,.2f}'.format(per_month*60),
     ]
 
-def generate_accounts_df(include_tax=True):
+def generate_accounts_df(include_external=True):
     incomes = sql.income.get()
     budgets = sql.budget.get()
 
     # Drop other
     incomes = incomes[incomes['name'] != 'other']
-    if not include_tax:
+    if not include_external:
+        incomes.loc[incomes['name'] == 'salary', 'equation'] += f' * (100-{budgets[budgets['name'] == 'taxes']['value'].iloc[0]+budgets[budgets['name'] == '401k']['value'].iloc[0]})/100'
         budgets = budgets[budgets['name'] != 'taxes']
-    # print(incomes)
+        budgets = budgets[budgets['name'] != '401k']
 
     columns = ['Name', 'Percentage', 'Per Month', 'Category', 'id']
 
@@ -172,7 +173,7 @@ def generate_accounts_df(include_tax=True):
         'savings'
     ])
     
-    return determine_budget_allocations(pd.DataFrame(accounts, columns=columns), include_tax)
+    return determine_budget_allocations(pd.DataFrame(accounts, columns=columns), include_external)
 
 
 def solve_lp(l1, l2, l3):
@@ -204,13 +205,14 @@ def solve_lp(l1, l2, l3):
     return solution
 
 # With this refact I want to leave out the leftover
-def determine_budget_allocations(df: pd.DataFrame, include_tax=True):
+def determine_budget_allocations(df: pd.DataFrame, include_external=True):
 
     income = sql.income.get()
     income = income[income['name'] != 'other']
 
-    if not include_tax and 'taxes' in df['Name'].tolist():
-        df = df[df['Name'] != 'taxes']
+    if not include_external:
+        if 'taxes' in df['Name'].tolist(): df = df[df['Name'] != 'taxes']
+        if '401k' in df['Name'].tolist(): df = df[df['Name'] != '401k']
 
     # df = df[df['Name'] != 'Leftover']
 
@@ -233,7 +235,7 @@ def determine_budget_allocations(df: pd.DataFrame, include_tax=True):
     l3 = []
     for i, row in income.iterrows():
         for b in row['budgets'].split(', '):
-            if b == '' or (not include_tax and b == 'taxes'): continue
+            if b == '' or (not include_external and b in ('taxes', '401k')): continue
             l3 += [(l1_name.index(row['name']), l2_name.index(b))]
         l3 += [(l1_name.index(row['name']), l2_name.index('Leftover'))]
 

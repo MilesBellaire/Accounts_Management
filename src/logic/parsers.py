@@ -80,7 +80,7 @@ def personal_statement(filename:str, text:str):
          transactions.loc[len(transactions)] = [str(g) for g in re_out.groups()] + ['c' if checking else 's', account, '', '', False]
 
    # Check if description contains "mobile pmt" or "withdrawl" or "deposit"
-   regex = rf"(?:withdrawal|deposit).*xxxxx(?:{'|'.join(list(transactions['Account'].unique()))})|mobile pmt"
+   regex = rf"(?:withdrawal|deposit).*xxxxx(?:{'|'.join(list(transactions['Account'].unique()))})|(?:online |mobile |crcard)pmt"
    print(regex)
    transactions['IsTransfer'] = transactions['Description'].str.contains(regex, na=False, regex=True).map({False: 0, True: 1})
    # Accounts for start year being different that end year
@@ -149,7 +149,7 @@ def creditcard_statement(filename:str, text:str):
 
 
    # Check if description contains "mobile pmt" or "withdrawl" or "deposit"
-   regex = rf"mobile pymt"
+   regex = rf"(?:mobile|online|autopay) pymt"
    transactions['IsTransfer'] = transactions['Description'].str.contains(regex, na=False, regex=True).map({False: 0, True: 1})
    # Accounts for start year being different that end year
    # print(full_transact_date)
@@ -159,6 +159,7 @@ def creditcard_statement(filename:str, text:str):
    full_transact_date = [row['Date'] + ' ' + (start_date[-4:] if row['Date'][:4] == start_date[:4] else end_date[-4:])for _, row in transactions.iterrows()]
    transactions['Date'] = pd.to_datetime(full_transact_date, format="%b %d %Y")
    transactions['StatementId'] = statement_id
+   transactions['Amount'] = transactions['Amount'].str.replace(',', '').astype(float)
    transactions = transactions.drop(columns=['PostDate'])
    # print(transactions)
    # exit()
