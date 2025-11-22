@@ -4,6 +4,7 @@ import matplotlib.cm as cm
 import numpy as np
 from database.io.dbio import sql
 from datetime import timedelta
+import matplotlib
 
 def pie_chart(start_date='1900-01-01', end_date=''):
    
@@ -118,5 +119,6 @@ def pie_chart(start_date='1900-01-01', end_date=''):
    # ax_bar.set_xticks(ticks)
    # ax_bar.set_xticklabels([f"${int(t)}" for t in ticks])
    
+   matplotlib.use('TkAgg')
    plt.tight_layout()
    plt.show()

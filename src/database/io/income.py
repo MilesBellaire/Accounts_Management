@@ -121,7 +121,7 @@ class income:
       for id in budget_ids:
          create_distribution_budget = f"""
             insert into distribution_budget(distribution_id, budget_id, weight)
-            select {income_id}, {id}, 0
+            select (select primary_distribution_id from income where id = {income_id}), {id}, 0
             from budget
             where id = {id};
          """

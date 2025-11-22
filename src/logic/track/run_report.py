@@ -47,7 +47,7 @@ def run_report(start_date='1900-01-01', end_date=''):
    print(by_budget_table)
 
    report['account'].fillna('savings', inplace=True)
-   by_account = report.groupby('account').sum().round(2)[['initial_balance', 'total_debits', 'total_credits', 'change', 'balance']]
+   by_account = report.groupby('account').sum().round(2)[['initial_balance', 'debits', 'credits', 'transfered', 'change', 'balance']]
    # print(by_account)
    by_account_table = PrettyTable()
    by_account_table.align = 'r'
@@ -59,7 +59,7 @@ def run_report(start_date='1900-01-01', end_date=''):
    by_account_table.add_rows(formatted_rows)
    print(by_account_table)
 
-   total = report[['initial_balance', 'total_debits', 'total_credits', 'change', 'balance']].sum().round(2)
+   total = report[['initial_balance', 'debits', 'credits', 'transfered', 'change', 'balance']].sum().round(2)
    total_table = PrettyTable()
    total_table.align = 'r'
    total_table.field_names = [''] + total.index.tolist()
