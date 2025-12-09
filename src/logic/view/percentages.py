@@ -3,8 +3,8 @@ from prettytable import PrettyTable
 import logic.shared_logic as shared_logic
 from database.io.dbio import sql
 
-def income_percentages():
-    df = shared_logic.generate_accounts_df()
+def income_percentages(TakeHome:bool):
+    df = shared_logic.generate_accounts_df(not TakeHome)
     df = df.drop(['id'], axis=1)
 
     budgets = sql.budget.get()
@@ -34,8 +34,19 @@ def income_percentages():
             ['']*len(table.field_names),
             # ['-'*column_size]*len(table.field_names)
         ])
-        table.add_rows([[row[0], f'{row[1]:.2%}', f"${row[2]:.2f}"] + [f'{row[i+4]:.2%}' if i%2 == 0 else f'${row[i+4]:.2f}' for i in range(len(df.columns)-5)] for row in df_cat.values])
-        table.add_rows([['total', f'{sum(df_cat['Percentage']):.2%}', f'${sum(df_cat['Per Month']):.2f}'] + [f'{sum(df_cat.iloc[:, i+4]):.2%}' if i%2 == 0 else f'${sum(df_cat.iloc[:, i+4]):.2f}' for i in range(len(df.columns)-5)]])
+        table.add_rows([
+            [row[0], f'{row[1]:.2%}', f"${row[2]:.2f}"] + [
+                f'{row[i+4]:.2%}' if i%2 == 0 else f'${row[i+4]:.2f}' 
+                for i in range(len(df.columns)-5)
+            ] for row in df_cat.values
+        ])
+        table.add_rows([
+            ['total', f'{sum(df_cat['Percentage']):.2%}', f'${sum(df_cat['Per Month']):.2f}'] + [
+                f'{sum(df_cat.iloc[:, i+4]):.2%}' if i%2 == 0 
+                else f'${sum(df_cat.iloc[:, i+4]):.2f}' 
+                for i in range(len(df.columns)-5)
+            ]
+        ])
     print(table)
 
     income_percentage_sum = round(df[df['Account'] == 'income']['Percentage'].sum())

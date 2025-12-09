@@ -118,7 +118,10 @@ def pie_chart(start_date='1900-01-01', end_date=''):
    # ticks = np.arange(0, max_balance + 100, 100)
    # ax_bar.set_xticks(ticks)
    # ax_bar.set_xticklabels([f"${int(t)}" for t in ticks])
+   try:
+      matplotlib.use('TkAgg')
+   except:
+      pass
    
-   matplotlib.use('TkAgg')
    plt.tight_layout()
    plt.show()

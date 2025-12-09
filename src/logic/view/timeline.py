@@ -5,7 +5,7 @@ import re
 from prettytable import PrettyTable
 import logic.shared_logic as shared_logic
 
-def timeline():
+def timeline(Takehome:bool):
     def get_dollars_per(per_month):
         return [
             '${:,.2f}'.format(per_month/30.437),
@@ -15,7 +15,7 @@ def timeline():
             '${:,.2f}'.format(per_month*60),
         ]
 
-    df = shared_logic.generate_accounts_df()
+    df = shared_logic.generate_accounts_df(not Takehome)
     
     table = PrettyTable()
     table.align = 'r'

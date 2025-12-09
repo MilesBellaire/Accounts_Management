@@ -67,6 +67,9 @@ def generate_accounts_df(include_external=True):
 
     # Drop other
     incomes = incomes[incomes['name'] != 'other']
+    # gets rid of incomes that have monthly income of 0
+    incomes = incomes[incomes["value"] != 0]
+
     if not include_external:
         incomes.loc[incomes['name'] == 'salary', 'equation'] += f' * (100-{budgets[budgets['name'] == 'taxes']['value'].iloc[0]+budgets[budgets['name'] == '401k']['value'].iloc[0]})/100'
         budgets = budgets[budgets['name'] != 'taxes']
@@ -208,7 +211,8 @@ def solve_lp(l1, l2, l3):
 def determine_budget_allocations(df: pd.DataFrame, include_external=True):
 
     income = sql.income.get()
-    income = income[income['name'] != 'other']
+    # using filter out income["name"] not in df[df["Category"] = "income"]["name"]
+    income = income[income['name'].isin(df[df['Category'] == 'income']['Name'])]
 
     if not include_external:
         if 'taxes' in df['Name'].tolist(): df = df[df['Name'] != 'taxes']

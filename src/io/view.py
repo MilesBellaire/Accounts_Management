@@ -12,13 +12,19 @@ def view():
         print()
         print('1. Timeline')
         print('2. Income Percentages')
+        print('3. Takehome Timeline')
+        print('4. Takehome Income Percentages')
         print('0. Back')
         choice = int(input('Enter your choice: '))
 
         if choice == 1:
-            timeline()
+            timeline(False)
         elif choice == 2:
-            income_percentages()
+            income_percentages(False)
+        elif choice == 3:
+            timeline(True)
+        elif choice == 4:
+            income_percentages(True)
 
 
 view()
