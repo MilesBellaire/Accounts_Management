@@ -1,4 +1,0 @@
-import pandas as pd
-from logic.track.update_budget_distribution_weights import update_budget_distribution_weights
-
-update_budget_distribution_weights()

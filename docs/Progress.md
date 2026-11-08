@@ -208,3 +208,13 @@ Need to...
 
 
 I want to add a preset 
+
+
+
+# What do I need to do now?
+- Need to make sure this can handle incomes that are less than fixed income
+- Need to update the budgeting percentages so they're calculated based on actual income instead of ideal numbers
+   - What should I do about income varying between months?  Seems like if I only upload my credit card statements then I won't have any income to create bucket percentages off of, but I'm not sure I'd be able to group things by month because that would mean retroactively changing the budgeting percentages.  Maybe I should just use the ideal numbers as a starting point and then adjust them based on actual income?
+   - So if I did that I would have to take the ideal numbers, then subtract the income that I get from there to tell what I'm actuall
+   - I could also run a report that shows the difference between actual amounts per bucket vs the ideal amounts per bucket over time.  That would show if I'm on the right track or if I'm consistently lower or higher than I should be.
+- Make a visual to show budgets over time, and income over time for both amounts and percentages
